@@ -6,12 +6,34 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import it.tornado.androidntpclient.ui.theme.AndroidNTPClientTheme
+import screens.AboutScreen
+
+data class BottomNavigationItem(
+    val title: String,
+    val icon: ImageVector,
+    val route: String
+)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -19,29 +41,68 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             AndroidNTPClientTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+                val navController = rememberNavController()
+                MainScreen(navController = navController)
             }
         }
     }
 }
 
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
+fun MainScreen(navController: NavHostController) {
+    val items = listOf(
+        BottomNavigationItem(
+            title = "Home",
+            icon = Icons.Outlined.Home,
+            route = "client"
+        ),
+        BottomNavigationItem(
+            title = "Settings",
+            icon = Icons.Filled.Settings,
+            route = "settings"
+        ),
+        BottomNavigationItem(
+            title = "About",
+            icon = Icons.Filled.Info,
+            route = "about"
+        )
     )
-}
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    AndroidNTPClientTheme {
-        Greeting("Android")
+    var selectedItemIndex by remember { mutableIntStateOf(0) }
+
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        bottomBar = {
+            NavigationBar {
+                items.forEachIndexed { index, item ->
+                    NavigationBarItem(
+                        icon = { Icon(imageVector = item.icon, contentDescription = item.title) },
+                        label = { Text(text = item.title) },
+                        selected = selectedItemIndex == index,
+                        onClick = {
+                            selectedItemIndex = index
+                            navController.navigate(item.route)
+                        }
+                    )
+                }
+            }
+        }
+    ) { innerPadding ->
+        NavHost(navController = navController, startDestination = "client") {
+            composable("client") { ClientScreen(modifier = Modifier.padding(innerPadding)) }
+            composable("settings") { SettingsScreen(modifier = Modifier.padding(innerPadding)) }
+            composable("about") { AboutScreen(modifier = Modifier.padding(innerPadding)) }
+        }
     }
 }
+
+@Composable
+fun ClientScreen(modifier: Modifier = Modifier) {
+    Text(text = "Client Screen", modifier = modifier)
+}
+
+@Composable
+fun SettingsScreen(modifier: Modifier = Modifier) {
+    Text(text = "Settings Screen", modifier = modifier)
+}
+
