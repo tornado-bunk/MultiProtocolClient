@@ -1,1 +1,1 @@
-# AndroidNTPClient
+# Multi Protocol Client for Android

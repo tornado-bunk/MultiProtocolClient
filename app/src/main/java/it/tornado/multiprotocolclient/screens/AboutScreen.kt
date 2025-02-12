@@ -1,4 +1,4 @@
-package it.tornado.androidntpclient.screens
+package it.tornado.multiprotocolclient.screens
 
 import android.content.Intent
 import android.net.Uri
@@ -18,7 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import it.tornado.androidntpclient.R
+import it.tornado.multiprotocolclient.R
 
 @Composable
 fun AboutScreen(modifier: Modifier = Modifier) {

@@ -1,4 +1,4 @@
-package it.tornado.androidntpclient.viewmodel
+package it.tornado.multiprotocolclient.viewmodel
 
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue

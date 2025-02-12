@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "it.tornado.androidntpclient"
+    namespace = "it.tornado.multiprotocolclient"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "it.tornado.androidntpclient"
+        applicationId = "it.tornado.multiprotocolclient"
         minSdk = 26
         targetSdk = 35
         versionCode = 1

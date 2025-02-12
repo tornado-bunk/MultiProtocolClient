@@ -1,4 +1,4 @@
-package it.tornado.androidntpclient
+package it.tornado.multiprotocolclient
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -25,8 +25,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import it.tornado.androidntpclient.ui.theme.AndroidNTPClientTheme
-import it.tornado.androidntpclient.screens.AboutScreen
+import it.tornado.multiprotocolclient.ui.theme.MultiProtocolClientTheme
+import it.tornado.multiprotocolclient.screens.AboutScreen
 
 data class BottomNavigationItem(
     val title: String,
@@ -39,7 +39,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            AndroidNTPClientTheme {
+            MultiProtocolClientTheme {
                 val navController = rememberNavController()
                 MainScreen(navController = navController)
             }

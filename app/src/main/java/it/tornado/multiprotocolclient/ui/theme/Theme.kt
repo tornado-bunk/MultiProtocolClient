@@ -1,4 +1,4 @@
-package it.tornado.androidntpclient.ui.theme
+package it.tornado.multiprotocolclient.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -21,7 +21,7 @@ private val LightColorScheme = lightColorScheme(
 )
 
 @Composable
-fun AndroidNTPClientTheme(
+fun MultiProtocolClientTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit

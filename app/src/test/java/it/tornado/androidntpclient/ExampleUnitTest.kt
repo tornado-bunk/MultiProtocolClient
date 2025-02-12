@@ -1,4 +1,4 @@
-package it.tornado.androidntpclient
+package it.tornado.multiprotocolclient
 
 import org.junit.Test
 
