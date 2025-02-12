@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "AndroidNTPClient"
+rootProject.name = "MultiProtocolClient"
 include(":app")
  
