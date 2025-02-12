@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -27,7 +26,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import it.tornado.androidntpclient.ui.theme.AndroidNTPClientTheme
-import screens.AboutScreen
+import it.tornado.androidntpclient.screens.AboutScreen
 
 data class BottomNavigationItem(
     val title: String,
@@ -55,11 +54,6 @@ fun MainScreen(navController: NavHostController) {
             title = "Home",
             icon = Icons.Outlined.Home,
             route = "client"
-        ),
-        BottomNavigationItem(
-            title = "Settings",
-            icon = Icons.Filled.Settings,
-            route = "settings"
         ),
         BottomNavigationItem(
             title = "About",
@@ -90,7 +84,6 @@ fun MainScreen(navController: NavHostController) {
     ) { innerPadding ->
         NavHost(navController = navController, startDestination = "client") {
             composable("client") { ClientScreen(modifier = Modifier.padding(innerPadding)) }
-            composable("settings") { SettingsScreen(modifier = Modifier.padding(innerPadding)) }
             composable("about") { AboutScreen(modifier = Modifier.padding(innerPadding)) }
         }
     }
@@ -99,10 +92,5 @@ fun MainScreen(navController: NavHostController) {
 @Composable
 fun ClientScreen(modifier: Modifier = Modifier) {
     Text(text = "Client Screen", modifier = modifier)
-}
-
-@Composable
-fun SettingsScreen(modifier: Modifier = Modifier) {
-    Text(text = "Settings Screen", modifier = modifier)
 }
 
