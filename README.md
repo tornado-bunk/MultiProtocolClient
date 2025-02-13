@@ -81,12 +81,12 @@
       <td align="center">
         <img src="imgs/screenshot/ntp.png" width="250" alt="NTP Screenshot">
         <br>
-        <em>NTP with timezone management</em>
+        <em>NTP</em>
       </td>
       <td align="center">
         <img src="imgs/screenshot/custom.png" width="250" alt="Custom Screenshot">
         <br>
-        <em>Custom TCP/UDP connections</em>
+        <em>Custom TCP/UDP</em>
       </td>
     </tr>
   </table>
