@@ -1,4 +1,4 @@
-package it.tornado.multiprotocolclient.ui.screens
+package it.tornado.multiprotocolclient.screens
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
@@ -20,32 +20,69 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalFocusManager
 import kotlinx.coroutines.launch
+import java.time.ZoneId
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ClientScreen(modifier: Modifier = Modifier) {
     val viewModel: ClientViewModel = viewModel()
     val response by viewModel.response.collectAsState()
-    val protocols = listOf("HTTP", "FTP", "NTP", "Custom")
+    val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
+
+    var useSSL by remember { mutableStateOf(true) }
+    var seeOnlyStatusCode by remember { mutableStateOf(false) }
+    var trustSelfSigned by remember { mutableStateOf(false) }
+
+    val protocols = listOf("HTTP", "NTP", "Custom")
     var selectedProtocol by remember { mutableStateOf(protocols[0]) }
     var ipAddress by remember { mutableStateOf("") }
     var port by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
-    val context = LocalContext.current
-    val focusManager = LocalFocusManager.current
-    var use_ssl by remember { mutableStateOf(true) }
-    var see_only_status_code by remember { mutableStateOf(false) }
-    val snackbarHostState = remember { SnackbarHostState() }
-    val coroutineScope = rememberCoroutineScope()
 
+    val coroutineScope = rememberCoroutineScope()
+    var expandedTimezone by remember { mutableStateOf(false) }
+    var selectedTimezone by remember { mutableStateOf("") }
+    val timezones = remember { ZoneId.getAvailableZoneIds().sorted() }
+    var useTcp by remember { mutableStateOf(true) }
+    var useSystemTimezone by remember { mutableStateOf(true) }
+
+    //At launch, set the default port based on the selected protocol
+    //Set the default timezone to the system timezone
+// Modify the LaunchedEffect
+    LaunchedEffect(selectedProtocol) {
+        // Reset common fields
+        ipAddress = ""
+        port = ""
+
+        // Set protocol-specific defaults
+        when (selectedProtocol) {
+            "HTTP" -> {
+                port = if (useSSL) "443" else "80"
+                seeOnlyStatusCode = false
+                trustSelfSigned = false
+            }
+            "NTP" -> {
+                selectedTimezone = ZoneId.systemDefault().id
+                useSystemTimezone = true
+            }
+            "Custom" -> {
+                useTcp = true
+            }
+        }
+
+        // Reset response
+        viewModel.resetResponse()
+    }
+
+
+    // Main content
     Column(
         modifier = modifier
             .padding(16.dp)
             .padding(top = 48.dp)
             .fillMaxSize()
     ) {
-        SnackbarHost(hostState = snackbarHostState)
-
         Spacer(modifier = Modifier.height(8.dp))
         ExposedDropdownMenuBox(
             expanded = expanded,
@@ -58,7 +95,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .menuAnchor()
+                    .menuAnchor(MenuAnchorType.PrimaryEditable)
             )
 
             ExposedDropdownMenu(
@@ -86,7 +123,8 @@ fun ClientScreen(modifier: Modifier = Modifier) {
             modifier = Modifier.fillMaxWidth()
         )
 
-        if (selectedProtocol == "Custom") {
+        // Show additional fields based on the selected protocol
+        if (selectedProtocol == "HTTP") {
             Spacer(modifier = Modifier.height(16.dp))
             OutlinedTextField(
                 value = port,
@@ -95,33 +133,123 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                 keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth()
             )
+
+            Column(
+                modifier = Modifier.padding(top = 8.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Checkbox(
+                        checked = useSSL,
+                        onCheckedChange = {
+                            useSSL = it
+                            port = if (it) "443" else "80"
+                        }
+                    )
+                    Text(text = "Use SSL")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Checkbox(
+                        checked = seeOnlyStatusCode,
+                        onCheckedChange = { seeOnlyStatusCode = it }
+                    )
+                    Text(text = "Only status code")
+                }
+
+                // Show the option to trust self-signed certificates only if SSL is enabled
+                if (useSSL) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(top = 4.dp)
+                    ) {
+                        Checkbox(
+                            checked = trustSelfSigned,
+                            onCheckedChange = { trustSelfSigned = it }
+                        )
+                        Text(text = "Trust self-signed certificates")
+                    }
+                }
+            }
         }
-        if (selectedProtocol == "HTTP") {
+
+        // Show additional fields based on the selected protocol
+        if (selectedProtocol == "NTP") {
+
+            Spacer(modifier = Modifier.height(16.dp))
+            Column {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                ) {
+                    Checkbox(
+                        checked = useSystemTimezone,
+                        onCheckedChange = { checked ->
+                            useSystemTimezone = checked
+                            selectedTimezone = if (checked) {
+                                ZoneId.systemDefault().id
+                            } else {
+                                "GMT"
+                            }
+                        }
+                    )
+                    Text(text = "Use System Timezone")
+                }
+
+                ExposedDropdownMenuBox(
+                    expanded = expandedTimezone,
+                    onExpandedChange = { expandedTimezone = !expandedTimezone }
+                ) {
+                    OutlinedTextField(
+                        value = selectedTimezone,
+                        onValueChange = { },
+                        readOnly = true,
+                        label = { Text("Timezone") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedTimezone) },
+                        enabled = !useSystemTimezone,  //Disable the field if the system timezone is used
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(MenuAnchorType.PrimaryEditable)
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = expandedTimezone && !useSystemTimezone,
+                        onDismissRequest = { expandedTimezone = false }
+                    ) {
+                        timezones.forEach { timezone ->
+                            DropdownMenuItem(
+                                text = { Text(timezone) },
+                                onClick = {
+                                    selectedTimezone = timezone
+                                    expandedTimezone = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Show additional fields based on the selected protocol
+        if (selectedProtocol == "Custom") {
+
+            Spacer(modifier = Modifier.height(16.dp))
+            OutlinedTextField(
+                value = port,
+                onValueChange = { port = it },
+                label = { Text("Port") },
+                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth()
+            )
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(top = 8.dp)
             ) {
                 Checkbox(
-                    checked = use_ssl,
-                    onCheckedChange = {
-                        use_ssl = it
-                        if (!it) {
-                            coroutineScope.launch {
-                                snackbarHostState.showSnackbar(
-                                    message = "HTTP connections are only allowed on the local network",
-                                    duration = SnackbarDuration.Short
-                                )
-                            }
-                        }
-                    }
+                    checked = useTcp,
+                    onCheckedChange = { useTcp = it }
                 )
-                Text(text = "Use SSL")
-                Spacer(modifier = Modifier.width(8.dp))
-                Checkbox(
-                    checked = see_only_status_code,
-                    onCheckedChange = { see_only_status_code = it }
-                )
-                Text(text = "Only status code")
+                Text(text = if (useTcp) "TCP" else "UDP")
             }
         }
 
@@ -132,15 +260,40 @@ fun ClientScreen(modifier: Modifier = Modifier) {
         ) {
             FilledTonalButton(
                 onClick = {
-                    if (selectedProtocol == "Custom" && port.isEmpty()) {
-                        coroutineScope.launch {
-                            Toast.makeText(context, "Port is required for Custom protocol", Toast.LENGTH_SHORT).show()
+                    // When the user clicks on the button, validate the input fields
+                    when (selectedProtocol) {
+                        // Case "HTTP" and "Custom"
+                        "Custom", "HTTP" -> {
+                            if (port.isEmpty()) {
+                                coroutineScope.launch {
+                                    Toast.makeText(context, "Port is required", Toast.LENGTH_SHORT).show()
+                                }
+                                return@FilledTonalButton
+                            }
+                            try {
+                                val portNumber = port.toInt()
+                                if (portNumber !in 1..65535) {
+                                    coroutineScope.launch {
+                                        Toast.makeText(context, "Port must be between 1 and 65535", Toast.LENGTH_SHORT).show()
+                                    }
+                                    return@FilledTonalButton
+                                }
+                            } catch (e: NumberFormatException) {
+                                coroutineScope.launch {
+                                    Toast.makeText(context, "Invalid port number", Toast.LENGTH_SHORT).show()
+                                }
+                                return@FilledTonalButton
+                            }
                         }
-                        return@FilledTonalButton
                     }
+
                     viewModel.resetResponse()
                     focusManager.clearFocus()
-                    viewModel.sendHttpRequest(selectedProtocol, ipAddress, port, use_ssl, see_only_status_code)
+                    when (selectedProtocol) {
+                        "HTTP" -> viewModel.sendHttpRequest(selectedProtocol, ipAddress, port, useSSL, seeOnlyStatusCode, trustSelfSigned)
+                        "NTP" -> viewModel.sendNtpRequest(ipAddress, selectedTimezone)
+                        "Custom" -> viewModel.sendCustomRequest(ipAddress, port, useTcp)
+                    }
                     coroutineScope.launch {
                         Toast.makeText(context, "Request Sent", Toast.LENGTH_SHORT).show()
                     }
@@ -154,9 +307,9 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                     focusManager.clearFocus()
                     selectedProtocol = protocols[0]
                     ipAddress = ""
-                    port = ""
-                    use_ssl = false
-                    see_only_status_code = false
+                    port = "443"
+                    useSSL = true
+                    seeOnlyStatusCode = false
                     viewModel.resetResponse()
                 }
             ) {

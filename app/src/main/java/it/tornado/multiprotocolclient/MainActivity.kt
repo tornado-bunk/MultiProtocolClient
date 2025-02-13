@@ -27,7 +27,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import it.tornado.multiprotocolclient.ui.theme.MultiProtocolClientTheme
 import it.tornado.multiprotocolclient.screens.AboutScreen
-import it.tornado.multiprotocolclient.ui.screens.ClientScreen
+import it.tornado.multiprotocolclient.screens.ClientScreen
 
 data class BottomNavigationItem(
     val title: String,
