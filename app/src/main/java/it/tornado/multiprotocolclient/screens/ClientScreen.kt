@@ -260,9 +260,14 @@ fun ClientScreen(modifier: Modifier = Modifier) {
         ) {
             FilledTonalButton(
                 onClick = {
-                    // When the user clicks on the button, validate the input fields
+                    if (ipAddress.isEmpty()) {
+                        coroutineScope.launch {
+                            Toast.makeText(context, "Host is required", Toast.LENGTH_SHORT).show()
+                        }
+                        return@FilledTonalButton
+                    }
+
                     when (selectedProtocol) {
-                        // Case "HTTP" and "Custom"
                         "Custom", "HTTP" -> {
                             if (port.isEmpty()) {
                                 coroutineScope.launch {
@@ -285,6 +290,14 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                                 return@FilledTonalButton
                             }
                         }
+                        "NTP" -> {
+                            if (selectedTimezone.isEmpty()) {
+                                coroutineScope.launch {
+                                    Toast.makeText(context, "Timezone is required", Toast.LENGTH_SHORT).show()
+                                }
+                                return@FilledTonalButton
+                            }
+                        }
                     }
 
                     viewModel.resetResponse()
@@ -301,7 +314,9 @@ fun ClientScreen(modifier: Modifier = Modifier) {
             ) {
                 Text(text = "Send")
             }
+
             Spacer(modifier = Modifier.width(8.dp))
+
             OutlinedButton(
                 onClick = {
                     focusManager.clearFocus()
@@ -310,12 +325,14 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                     port = "443"
                     useSSL = true
                     seeOnlyStatusCode = false
+                    trustSelfSigned = false
                     viewModel.resetResponse()
                 }
             ) {
                 Text(text = "Reset")
             }
         }
+
 
         Spacer(modifier = Modifier.height(16.dp))
         Card(
