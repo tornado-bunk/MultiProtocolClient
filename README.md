@@ -76,17 +76,14 @@
       <td align="center">
         <img src="imgs/screenshot/http.png" width="250" alt="HTTP Screenshot">
         <br>
-        <em>HTTP/HTTPS</em>
       </td>
       <td align="center">
         <img src="imgs/screenshot/ntp.png" width="250" alt="NTP Screenshot">
         <br>
-        <em>NTP (Network Time Protocol)</em>
       </td>
       <td align="center">
         <img src="imgs/screenshot/custom.png" width="250" alt="Custom Screenshot">
         <br>
-        <em>Custom TCP/UDP</em>
       </td>
     </tr>
   </table>
