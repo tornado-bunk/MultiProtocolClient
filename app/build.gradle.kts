@@ -27,13 +27,37 @@ android {
             )
         }
     }
+
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("x86", "x86_64", "armeabi-v7a", "arm64-v8a")
+            isUniversalApk = true
+        }
+    }
+
+    bundle {
+        language {
+            enableSplit = false
+        }
+        density {
+            enableSplit = true
+        }
+        abi {
+            enableSplit = true
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
     kotlinOptions {
         jvmTarget = "17"
     }
+
     buildFeatures {
         compose = true
     }
