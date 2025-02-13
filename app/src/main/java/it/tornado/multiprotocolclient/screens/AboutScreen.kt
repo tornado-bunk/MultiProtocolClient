@@ -45,7 +45,7 @@ fun AboutScreen(modifier: Modifier = Modifier) {
         Spacer(modifier = Modifier.height(32.dp))
 
         Text(
-            text = "I'm a Computer Science student at Università della Calabria",
+            text = "I'm a Computer Science student at Università della Calabria.",
             style = MaterialTheme.typography.headlineSmall.copy(
                 fontWeight = FontWeight.Medium,
                 fontSize = 20.sp
@@ -68,9 +68,8 @@ fun AboutScreen(modifier: Modifier = Modifier) {
             modifier = Modifier.padding(horizontal = 16.dp)
         )
 
-        Spacer(modifier = Modifier.weight(1f)) // Spinge il contenuto sopra
+        Spacer(modifier = Modifier.weight(1f))
 
-        // Logo GitHub centrato in basso
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -84,7 +83,7 @@ fun AboutScreen(modifier: Modifier = Modifier) {
             Icon(
                 painter = painterResource(id = R.drawable.github_light),
                 contentDescription = "GitHub Logo",
-                modifier = Modifier.size(56.dp) // Ingrandito
+                modifier = Modifier.size(56.dp)
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(

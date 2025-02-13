@@ -27,6 +27,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import it.tornado.multiprotocolclient.ui.theme.MultiProtocolClientTheme
 import it.tornado.multiprotocolclient.screens.AboutScreen
+import it.tornado.multiprotocolclient.screens.ClientScreen
 
 data class BottomNavigationItem(
     val title: String,
@@ -87,10 +88,5 @@ fun MainScreen(navController: NavHostController) {
             composable("about") { AboutScreen(modifier = Modifier.padding(innerPadding)) }
         }
     }
-}
-
-@Composable
-fun ClientScreen(modifier: Modifier = Modifier) {
-    Text(text = "Client Screen", modifier = modifier)
 }
 
