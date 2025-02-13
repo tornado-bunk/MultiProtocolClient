@@ -17,7 +17,6 @@ navigationCompose = "2.8.7"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
-androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycleRuntimeKtx" }
 androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
 androidx-material3-v131 = { module = "androidx.compose.material3:material3", version.ref = "androidxMaterial3" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
