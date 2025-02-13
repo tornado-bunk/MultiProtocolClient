@@ -81,7 +81,7 @@
       <td align="center">
         <img src="imgs/screenshot/ntp.png" width="250" alt="NTP Screenshot">
         <br>
-        <em>NTP</em>
+        <em>NTP (Network Time Protocol)</em>
       </td>
       <td align="center">
         <img src="imgs/screenshot/custom.png" width="250" alt="Custom Screenshot">
