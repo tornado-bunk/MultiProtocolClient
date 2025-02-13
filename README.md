@@ -1,10 +1,20 @@
-# 🌐 MultiProtocolClient
+<p align="center">
+  <img src="imgs/logo/logo_mpc.jpg" width="200" height="200" alt="MultiProtocolClient Logo">
+</p>
 
-![Material You Badge](https://img.shields.io/badge/Material%20You-Enabled-blue)
-![Platform](https://img.shields.io/badge/platform-Android-brightgreen)
-![Kotlin](https://img.shields.io/badge/kotlin-100%25-blueviolet)
+<p align="center">
+  <img src="https://img.shields.io/badge/Material%20You-Enabled-blue">
+  <img src="https://img.shields.io/badge/platform-Android-brightgreen">
+  <img src="https://img.shields.io/badge/kotlin-100%25-blueviolet">
+</p>
 
-A modern and versatile Android application that allows interaction with different network protocols through an elegant and intuitive Material You interface.
+<h1 align="center">Multi Protocol Client for Android</h1>
+
+<p align="center">
+  A modern and versatile Android application that allows interaction with different network protocols through an elegant and intuitive Material You interface.
+</p>
+
+---
 
 ## ✨ Features
 
@@ -59,7 +69,33 @@ A modern and versatile Android application that allows interaction with differen
 - Material 3
 
 ## 📱 Screenshots
-[Insert application screenshots]
+
+<div align="center">
+  <table align="center" style="margin: 0 auto">
+    <tr>
+      <td align="center">
+        <img src="imgs/screenshot/http.png" width="250" alt="HTTP Screenshot">
+        <br>
+        <em>HTTP/HTTPS</em>
+      </td>
+      <td align="center">
+        <img src="imgs/screenshot/ntp.png" width="250" alt="NTP Screenshot">
+        <br>
+        <em>NTP with timezone management</em>
+      </td>
+      <td align="center">
+        <img src="imgs/screenshot/custom.png" width="250" alt="Custom Screenshot">
+        <br>
+        <em>Custom TCP/UDP connections</em>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p align="center">
+  <em>Clean Material You design with intuitive protocol-specific controls</em>
+</p>
+
 
 ## 🔧 Requirements
 - Android 8.0 (API level 26) or higher
