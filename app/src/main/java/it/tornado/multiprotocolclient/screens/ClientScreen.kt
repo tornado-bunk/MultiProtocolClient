@@ -114,25 +114,28 @@ fun ClientScreen(modifier: Modifier = Modifier) {
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-        OutlinedTextField(
-            value = ipAddress,
-            onValueChange = { ipAddress = it },
-            label = { Text("Host") },
-            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
-            modifier = Modifier.fillMaxWidth()
-        )
-
         // Show additional fields based on the selected protocol
         if (selectedProtocol == "HTTP") {
             Spacer(modifier = Modifier.height(16.dp))
-            OutlinedTextField(
-                value = port,
-                onValueChange = { port = it },
-                label = { Text("Port") },
-                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth()
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = ipAddress,
+                    onValueChange = { ipAddress = it },
+                    label = { Text("Host") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedTextField(
+                    value = port,
+                    onValueChange = { port = it },
+                    label = { Text("Port") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.width(120.dp)
+                )
+            }
 
             Column(
                 modifier = Modifier.padding(top = 8.dp)
@@ -172,74 +175,121 @@ fun ClientScreen(modifier: Modifier = Modifier) {
             }
         }
 
-        // Show additional fields based on the selected protocol
         if (selectedProtocol == "NTP") {
-
             Spacer(modifier = Modifier.height(16.dp))
-            Column {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                ) {
-                    Checkbox(
-                        checked = useSystemTimezone,
-                        onCheckedChange = { checked ->
-                            useSystemTimezone = checked
-                            selectedTimezone = if (checked) {
-                                ZoneId.systemDefault().id
-                            } else {
-                                "GMT"
-                            }
-                        }
-                    )
-                    Text(text = "Use System Timezone")
+
+            var searchText by remember { mutableStateOf("") }
+            val filteredTimezones = remember(searchText) {
+                timezones.filter {
+                    it.contains(searchText, ignoreCase = true)
                 }
+            }
+
+            // Synchronyze the selected timezone with the search text
+            LaunchedEffect(useSystemTimezone) {
+                if (useSystemTimezone) {
+                    searchText = ZoneId.systemDefault().id
+                    selectedTimezone = ZoneId.systemDefault().id
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = ipAddress,
+                    onValueChange = { ipAddress = it },
+                    label = { Text("Host") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
+                    modifier = Modifier.weight(1f)
+                )
 
                 ExposedDropdownMenuBox(
                     expanded = expandedTimezone,
-                    onExpandedChange = { expandedTimezone = !expandedTimezone }
+                    onExpandedChange = { expandedTimezone = !expandedTimezone },
+                    modifier = Modifier.width(200.dp)
                 ) {
                     OutlinedTextField(
-                        value = selectedTimezone,
-                        onValueChange = { },
-                        readOnly = true,
+                        value = searchText,
+                        onValueChange = { newText ->
+                            searchText = newText
+                            expandedTimezone = true
+                            if (timezones.contains(newText)) {
+                                selectedTimezone = newText
+                            }
+                        },
                         label = { Text("Timezone") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedTimezone) },
-                        enabled = !useSystemTimezone,  //Disable the field if the system timezone is used
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(MenuAnchorType.PrimaryEditable)
+                        enabled = !useSystemTimezone,
+                        modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryEditable)
                     )
 
-                    ExposedDropdownMenu(
-                        expanded = expandedTimezone && !useSystemTimezone,
-                        onDismissRequest = { expandedTimezone = false }
-                    ) {
-                        timezones.forEach { timezone ->
-                            DropdownMenuItem(
-                                text = { Text(timezone) },
-                                onClick = {
-                                    selectedTimezone = timezone
-                                    expandedTimezone = false
-                                }
-                            )
+                    if (filteredTimezones.isNotEmpty()) {
+                        ExposedDropdownMenu(
+                            expanded = expandedTimezone && !useSystemTimezone,
+                            onDismissRequest = { expandedTimezone = false }
+                        ) {
+                            filteredTimezones.forEach { timezone ->
+                                DropdownMenuItem(
+                                    text = { Text(timezone) },
+                                    onClick = {
+                                        selectedTimezone = timezone
+                                        searchText = timezone
+                                        expandedTimezone = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }
             }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(top = 8.dp)
+            ) {
+                Checkbox(
+                    checked = useSystemTimezone,
+                    onCheckedChange = { checked ->
+                        useSystemTimezone = checked
+                        if (checked) {
+                            selectedTimezone = ZoneId.systemDefault().id
+                            searchText = ZoneId.systemDefault().id
+                        } else {
+                            selectedTimezone = searchText
+                        }
+                    }
+                )
+                Text(text = "Use System Timezone")
+            }
         }
+
 
         // Show additional fields based on the selected protocol
         if (selectedProtocol == "Custom") {
-
             Spacer(modifier = Modifier.height(16.dp))
-            OutlinedTextField(
-                value = port,
-                onValueChange = { port = it },
-                label = { Text("Port") },
-                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth()
-            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = ipAddress,
+                    onValueChange = { ipAddress = it },
+                    label = { Text("Host") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
+                    modifier = Modifier.weight(1f)
+                )
+
+                OutlinedTextField(
+                    value = port,
+                    onValueChange = { port = it },
+                    label = { Text("Port") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.width(120.dp)
+                )
+            }
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -262,7 +312,8 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                 onClick = {
                     if (ipAddress.isEmpty()) {
                         coroutineScope.launch {
-                            Toast.makeText(context, "Host is required", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Host is required", Toast.LENGTH_SHORT)
+                                .show()
                         }
                         return@FilledTonalButton
                     }
@@ -271,7 +322,11 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                         "Custom", "HTTP" -> {
                             if (port.isEmpty()) {
                                 coroutineScope.launch {
-                                    Toast.makeText(context, "Port is required", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(
+                                        context,
+                                        "Port is required",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                 }
                                 return@FilledTonalButton
                             }
@@ -279,21 +334,34 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                                 val portNumber = port.toInt()
                                 if (portNumber !in 1..65535) {
                                     coroutineScope.launch {
-                                        Toast.makeText(context, "Port must be between 1 and 65535", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(
+                                            context,
+                                            "Port must be between 1 and 65535",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
                                     }
                                     return@FilledTonalButton
                                 }
                             } catch (e: NumberFormatException) {
                                 coroutineScope.launch {
-                                    Toast.makeText(context, "Invalid port number", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(
+                                        context,
+                                        "Invalid port number",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                 }
                                 return@FilledTonalButton
                             }
                         }
+
                         "NTP" -> {
                             if (selectedTimezone.isEmpty()) {
                                 coroutineScope.launch {
-                                    Toast.makeText(context, "Timezone is required", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(
+                                        context,
+                                        "Timezone is required",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                 }
                                 return@FilledTonalButton
                             }
@@ -303,7 +371,15 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                     viewModel.resetResponse()
                     focusManager.clearFocus()
                     when (selectedProtocol) {
-                        "HTTP" -> viewModel.sendHttpRequest(selectedProtocol, ipAddress, port, useSSL, seeOnlyStatusCode, trustSelfSigned)
+                        "HTTP" -> viewModel.sendHttpRequest(
+                            selectedProtocol,
+                            ipAddress,
+                            port,
+                            useSSL,
+                            seeOnlyStatusCode,
+                            trustSelfSigned
+                        )
+
                         "NTP" -> viewModel.sendNtpRequest(ipAddress, selectedTimezone)
                         "Custom" -> viewModel.sendCustomRequest(ipAddress, port, useTcp)
                     }
@@ -352,3 +428,4 @@ fun ClientScreen(modifier: Modifier = Modifier) {
         }
     }
 }
+

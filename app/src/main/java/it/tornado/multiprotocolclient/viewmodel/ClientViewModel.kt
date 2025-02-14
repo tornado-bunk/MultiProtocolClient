@@ -60,7 +60,7 @@ class ClientViewModel : ViewModel() {
             // Create the packet
             val packet = DatagramPacket(buffer, buffer.size, address, 123)
 
-            emit(listOf("Sending NTP request to $ipAddress..."))
+            emit(listOf("Sending NTP request to $ipAddress...\n"))
 
             // Send the packet
             socket.soTimeout = 5000
@@ -81,8 +81,13 @@ class ClientViewModel : ViewModel() {
             val instant = Instant.ofEpochMilli(ntpTime)
             val dateTime = LocalDateTime.ofInstant(instant, ZoneId.of(timezone))
 
-            emit(listOf("NTP Response received"))
-            emit(listOf("Server time: $dateTime"))
+            emit(listOf("NTP Response received:"))
+            emit(listOf("Server time: $dateTime\n"))
+            emit(listOf("Formatted response:"))
+            emit(listOf(
+                "Time: ${dateTime.toLocalTime()}",
+                "Date: ${dateTime.toLocalDate()}"
+            ))
 
             socket.close()
         } catch (e: Exception) {
@@ -114,7 +119,6 @@ class ClientViewModel : ViewModel() {
         return fraction
     }
 
-
     //HTTP Section
     fun sendHttpRequest(protocol: String, ip: String, port: String, useSSL: Boolean, seeOnlyStatusCode: Boolean, trustSelfSigned: Boolean = false) {
         viewModelScope.launch {
@@ -137,7 +141,7 @@ class ClientViewModel : ViewModel() {
 
             // If the connection is HTTPS and trustSelfSigned is false, verify the SSL certificate
             if (connection is HttpsURLConnection && !trustSelfSigned) {
-                emit(listOf("Verifying SSL certificate..."))
+                emit(listOf("Verifying SSL certificate...\n"))
                 try {
                     connection.connect()
                 } catch (e: Exception) {
@@ -230,7 +234,7 @@ class ClientViewModel : ViewModel() {
     //Function to send a custom protocol request to the specified server
     private fun customResponse(ipAddress: String, port: String, useTcp: Boolean) = flow {
         try {
-            emit(listOf("Attempting ${if (useTcp) "TCP" else "UDP"} connection to $ipAddress:$port..."))
+            emit(listOf("Attempting ${if (useTcp) "TCP" else "UDP"} connection to $ipAddress:$port...\n"))
 
             // Case for TCP connection
             if (useTcp) {
@@ -247,7 +251,7 @@ class ClientViewModel : ViewModel() {
                     val message = "TEST\n".toByteArray()
                     outputStream.write(message)
                     outputStream.flush()
-                    emit(listOf("TCP message sent: TEST"))
+                    emit(listOf("TCP message sent: TEST\n"))
 
                     // Get the response
                     val inputStream = socket.getInputStream()
@@ -279,7 +283,7 @@ class ClientViewModel : ViewModel() {
 
                     val sendPacket = DatagramPacket(message, message.size, address, port.toInt())
                     socket.send(sendPacket)
-                    emit(listOf("UDP packet sent: TEST"))
+                    emit(listOf("UDP packet sent: TEST\n"))
 
                     // Get the response
                     val buffer = ByteArray(1024)
