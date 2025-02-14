@@ -76,6 +76,7 @@ dependencies {
     implementation(libs.androidx.material3.v131)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.material.icons.extended)
+    implementation(libs.dnsjava.dnsjava)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

@@ -34,7 +34,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     var seeOnlyStatusCode by remember { mutableStateOf(false) }
     var trustSelfSigned by remember { mutableStateOf(false) }
 
-    val protocols = listOf("HTTP", "NTP", "Custom")
+    val protocols = listOf("HTTP", "DNS", "NTP", "Custom")
     var selectedProtocol by remember { mutableStateOf(protocols[0]) }
     var ipAddress by remember { mutableStateOf("") }
     var port by remember { mutableStateOf("") }
@@ -47,9 +47,24 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     var useTcp by remember { mutableStateOf(true) }
     var useSystemTimezone by remember { mutableStateOf(true) }
 
-    //At launch, set the default port based on the selected protocol
-    //Set the default timezone to the system timezone
-// Modify the LaunchedEffect
+    var dnsQueryType by remember { mutableStateOf("A") }
+    val dnsTypes = listOf("A", "MX", "CNAME", "NS", "PTR", "ANY")
+    var useDnsOverHttps by remember { mutableStateOf(false) }
+    var useDnsOverTls by remember { mutableStateOf(false) }
+    var expandedDnsType by remember { mutableStateOf(false) }
+    var expandedResolver by remember { mutableStateOf(false) }
+    var customDohUrl by remember { mutableStateOf("") }
+    var selectedResolver by remember { mutableStateOf("Google DNS (8.8.8.8)") }
+    val resolvers = listOf(
+        "Google DNS (8.8.8.8)",
+        "Cloudflare (1.1.1.1)",
+        "OpenDNS (208.67.222.222)",
+        "Quad9 (9.9.9.9)",
+        "AdGuard DNS (94.140.14.14)",
+        "Custom"
+    )
+
+    //At launch, reset the fields based on the selected protocol
     LaunchedEffect(selectedProtocol) {
         // Reset common fields
         ipAddress = ""
@@ -61,6 +76,12 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                 port = if (useSSL) "443" else "80"
                 seeOnlyStatusCode = false
                 trustSelfSigned = false
+            }
+            "DNS" -> {
+                dnsQueryType = "A"
+                useDnsOverHttps = false
+                useDnsOverTls = false
+                customDohUrl = ""
             }
             "NTP" -> {
                 selectedTimezone = ZoneId.systemDefault().id
@@ -74,7 +95,6 @@ fun ClientScreen(modifier: Modifier = Modifier) {
         // Reset response
         viewModel.resetResponse()
     }
-
 
     // Main content
     Column(
@@ -175,6 +195,146 @@ fun ClientScreen(modifier: Modifier = Modifier) {
             }
         }
 
+        // Show additional fields based on the selected protocol
+        if (selectedProtocol == "DNS") {
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Domain and query type
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = ipAddress,
+                    onValueChange = { ipAddress = it },
+                    label = { Text("Domain/IP") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
+                    modifier = Modifier.weight(1f)
+                )
+
+                ExposedDropdownMenuBox(
+                    expanded = expandedDnsType,
+                    onExpandedChange = { expandedDnsType = !expandedDnsType },
+                    modifier = Modifier.width(150.dp)
+                ) {
+                    OutlinedTextField(
+                        value = dnsQueryType,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Query Type") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDnsType) },
+                        modifier = Modifier.menuAnchor()
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = expandedDnsType,
+                        onDismissRequest = { expandedDnsType = false }
+                    ) {
+                        dnsTypes.forEach { type ->
+                            DropdownMenuItem(
+                                text = { Text(type) },
+                                onClick = {
+                                    dnsQueryType = type
+                                    expandedDnsType = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // DNs resolver
+            Spacer(modifier = Modifier.height(8.dp))
+            ExposedDropdownMenuBox(
+                expanded = expandedResolver,
+                onExpandedChange = { expandedResolver = !expandedResolver }
+            ) {
+                OutlinedTextField(
+                    value = selectedResolver,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("DNS Resolver") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedResolver) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
+                )
+
+                ExposedDropdownMenu(
+                    expanded = expandedResolver,
+                    onDismissRequest = { expandedResolver = false }
+                ) {
+                    (if (useDnsOverHttps) {
+                        listOf("Cloudflare DoH (1.1.1.1)")
+                    } else {
+                        resolvers
+                    }).forEach { resolver ->
+                        DropdownMenuItem(
+                            text = { Text(resolver) },
+                            onClick = {
+                                selectedResolver = resolver
+                                expandedResolver = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Terza riga: Checkbox per DNS over HTTPS/TLS
+            Column(
+                modifier = Modifier.padding(top = 8.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Checkbox(
+                        checked = useDnsOverHttps,
+                        onCheckedChange = { checked ->
+                            useDnsOverHttps = checked
+                            if (checked) {
+                                useDnsOverTls = false
+                                selectedResolver = "Cloudflare DoH (1.1.1.1)"
+                                coroutineScope.launch {
+                                    Toast.makeText(
+                                        context,
+                                        "Currently only Cloudflare DNS over HTTPS is supported",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            } else {
+                                selectedResolver = "Google DNS (8.8.8.8)"
+                            }
+                        }
+                    )
+                    Text(text = "Use DNS over HTTPS")
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(top = 4.dp)
+                ) {
+                    Checkbox(
+                        checked = useDnsOverTls,
+                        onCheckedChange = { checked ->
+                            useDnsOverTls = checked
+                            if (checked) {
+                                useDnsOverHttps = false
+                                coroutineScope.launch {
+                                    Toast.makeText(
+                                        context,
+                                        "DNS over TLS is not implemented yet",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            }
+                        }
+                    )
+                    Text(text = "Use DNS over TLS")
+                }
+            }
+        }
+
+        // Show additional fields based on the selected protocol
         if (selectedProtocol == "NTP") {
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -265,7 +425,6 @@ fun ClientScreen(modifier: Modifier = Modifier) {
             }
         }
 
-
         // Show additional fields based on the selected protocol
         if (selectedProtocol == "Custom") {
             Spacer(modifier = Modifier.height(16.dp))
@@ -354,6 +513,22 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             }
                         }
 
+                        "DNS" -> {
+                            if (ipAddress.isEmpty()) {
+                                coroutineScope.launch {
+                                    Toast.makeText(context, "Domain/IP is required", Toast.LENGTH_SHORT).show()
+                                }
+                                return@FilledTonalButton
+                            }
+                            viewModel.sendDnsRequest(
+                                ipAddress,
+                                dnsQueryType,
+                                useDnsOverHttps,
+                                useDnsOverTls,
+                                selectedResolver,
+                            )
+                        }
+
                         "NTP" -> {
                             if (selectedTimezone.isEmpty()) {
                                 coroutineScope.launch {
@@ -402,11 +577,16 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                     useSSL = true
                     seeOnlyStatusCode = false
                     trustSelfSigned = false
+                    selectedResolver = "Google DNS (8.8.8.8)"
+                    useDnsOverHttps = false
+                    useDnsOverTls = false
+                    dnsQueryType = "A"
                     viewModel.resetResponse()
                 }
             ) {
                 Text(text = "Reset")
             }
+
         }
 
 
