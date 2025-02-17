@@ -34,8 +34,8 @@ fun AboutScreen(modifier: Modifier = Modifier) {
         Spacer(modifier = Modifier.height(16.dp))
 
         Image(
-            painter = painterResource(id = R.drawable.logo_round),
-            contentDescription = "Logo",
+            painter = painterResource(id = R.drawable.ic_mpc),
+            contentDescription = "App Logo",
             modifier = Modifier
                 .size(140.dp)
                 .clip(CircleShape),
@@ -45,23 +45,10 @@ fun AboutScreen(modifier: Modifier = Modifier) {
         Spacer(modifier = Modifier.height(32.dp))
 
         Text(
-            text = "I'm a Computer Science student at Università della Calabria.",
+            text = "A modern and versatile Android application that allows interaction with different network protocols through an elegant and intuitive Material You interface.",
             style = MaterialTheme.typography.headlineSmall.copy(
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Light,
                 fontSize = 20.sp
-            ),
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "This is my first project in Kotlin!",
-            style = MaterialTheme.typography.bodyLarge.copy(
-                fontWeight = FontWeight.Normal,
-                fontSize = 18.sp
             ),
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
