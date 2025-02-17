@@ -35,13 +35,14 @@
 - UDP packets
 - Real-time response display
 
-## 🚀 Upcoming Features
-
 ### 📡 DNS Management
 - DNS queries
-- Reverse DNS lookup
-- Record lookup (A, MX, TXT)
+- Record lookup (A, MX, CNAME, NS, PTR, ANY)
 - DNS over HTTPS
+- DNS over TLS
+- DNS query using TCP
+
+## 🚀 Upcoming Features
 
 ### 📊 Network Diagnostics
 - Ping
