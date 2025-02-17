@@ -80,6 +80,10 @@
         <br>
       </td>
       <td align="center">
+        <img src="imgs/screenshot/dns.png" width="250" alt="DNS Screenshot">
+        <br>
+      </td>
+      <td align="center">
         <img src="imgs/screenshot/ntp.png" width="250" alt="NTP Screenshot">
         <br>
       </td>
