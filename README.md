@@ -41,6 +41,7 @@
 - DNS over HTTPS
 - DNS over TLS
 - DNS query using TCP
+- DNS Recursion
 
 ## 🚀 Upcoming Features
 
