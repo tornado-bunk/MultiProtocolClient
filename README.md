@@ -43,11 +43,11 @@
 - DNS query using TCP
 - DNS Recursion
 
-## 🚀 Upcoming Features
-
 ### 📊 Network Diagnostics
 - Ping
 - Traceroute
+
+## 🚀 Upcoming Features
 
 ### 📧 Email Protocols
 - SMTP (25/587)
