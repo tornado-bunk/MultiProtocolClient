@@ -6,12 +6,12 @@ plugins {
 
 android {
     namespace = "it.tornado.multiprotocolclient"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "it.tornado.multiprotocolclient"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 1
         versionName = "1.1"
 
@@ -49,7 +49,7 @@ android {
     buildFeatures {
         compose = true
     }
-    buildToolsVersion = "36.1.0"
+    buildToolsVersion = "36.0.0-rc1"
 }
 
 dependencies {

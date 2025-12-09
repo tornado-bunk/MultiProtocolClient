@@ -22,6 +22,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalFocusManager
 
 import kotlinx.coroutines.launch
+import android.Manifest
+import android.os.Build
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import java.net.InetAddress
+import java.net.UnknownHostException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 import java.time.ZoneId
 
@@ -32,6 +42,70 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     val response by viewModel.response.collectAsState()
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
+
+    // Permission launcher for Android 13+ (SDK 33)
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            // Permission granted, retry the pending action if any? 
+            // For now, user has to click Send again or we could automagically handle it.
+            // Simpler to just let them click again as Toast will say "Permission granted" or similar if we wanted.
+            coroutineScope.launch {
+                Toast.makeText(context, "Permission granted. Please click Send again.", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+             coroutineScope.launch {
+                Toast.makeText(context, "Permission denied. Local connections may fail.", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    fun isLocalIp(ip: String): Boolean {
+        return try {
+             if (ip.isEmpty()) return false
+             
+             // Basic check for common local ranges
+             if (ip.startsWith("192.168.") || ip.startsWith("10.")) {
+                 return true
+             }
+             
+             // 172.16.x.x - 172.31.x.x
+             if (ip.startsWith("172.")) {
+                 val parts = ip.split(".")
+                 if (parts.size > 1) {
+                     val secondOctet = parts[1].toIntOrNull()
+                     return secondOctet != null && secondOctet in 16..31
+                 }
+             }
+             
+             // 169.254.x.x
+             if (ip.startsWith("169.254.")) return true
+             
+             false
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    fun checkAndRequestPermission(
+        ip: String,
+        onPermissionGranted: () -> Unit
+    ) {
+        if (Build.VERSION.SDK_INT >= 33 && isLocalIp(ip)) {
+             if (ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.NEARBY_WIFI_DEVICES
+                ) == PackageManager.PERMISSION_GRANTED
+            ) {
+                onPermissionGranted()
+            } else {
+                permissionLauncher.launch(Manifest.permission.NEARBY_WIFI_DEVICES)
+            }
+        } else {
+            onPermissionGranted()
+        }
+    }
 
     var useSSL by remember { mutableStateOf(true) }
     var seeOnlyStatusCode by remember { mutableStateOf(false) }
@@ -602,15 +676,17 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                                 }
                                 return@FilledTonalButton
                             }
-                            viewModel.sendDnsRequest(
-                                ipAddress,
-                                dnsQueryType,
-                                useDnsOverHttps,
-                                useDnsOverTls,
-                                selectedResolver,
-                                useRecursion,
-                                useTcp4Dns
-                            )
+                            // Validation only here, request is sent below in the permission block
+                            if (ipAddress.isEmpty()) {
+                                coroutineScope.launch {
+                                    Toast.makeText(
+                                        context,
+                                        "Domain/IP is required",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                                return@FilledTonalButton
+                            }
                         }
 
                         "NTP" -> {
@@ -627,23 +703,41 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                         }
                     }
 
-                    viewModel.resetResponse()
-                    focusManager.clearFocus()
-                    when (selectedProtocol) {
-                        "HTTP" -> viewModel.sendHttpRequest(
-                            selectedProtocol,
-                            ipAddress,
-                            port,
-                            useSSL,
-                            seeOnlyStatusCode,
-                            trustSelfSigned
-                        )
-
-                        "NTP" -> viewModel.sendNtpRequest(ipAddress, selectedTimezone)
-                        "Custom" -> viewModel.sendCustomRequest(ipAddress, port, useTcp)
                     }
-                    coroutineScope.launch {
-                        Toast.makeText(context, "Request Sent", Toast.LENGTH_SHORT).show()
+
+                    // Wrap the send logic in the permission check
+                    
+                    checkAndRequestPermission(ipAddress) {
+                         viewModel.resetResponse()
+                        focusManager.clearFocus()
+                        when (selectedProtocol) {
+                            "HTTP" -> viewModel.sendHttpRequest(
+                                selectedProtocol,
+                                ipAddress,
+                                port,
+                                useSSL,
+                                seeOnlyStatusCode,
+                                trustSelfSigned
+                            )
+
+                            "NTP" -> viewModel.sendNtpRequest(ipAddress, selectedTimezone)
+                            "Custom" -> viewModel.sendCustomRequest(ipAddress, port, useTcp)
+                            "DNS" -> {
+                                // DNS might be exempt if using system DNS, but if direct IP query to local resolver:
+                                 viewModel.sendDnsRequest(
+                                    ipAddress,
+                                    dnsQueryType,
+                                    useDnsOverHttps,
+                                    useDnsOverTls,
+                                    selectedResolver,
+                                    useRecursion,
+                                    useTcp4Dns
+                                )
+                            }
+                        }
+                        coroutineScope.launch {
+                            Toast.makeText(context, "Request Sent", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 }
             ) {

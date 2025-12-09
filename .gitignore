@@ -70,3 +70,6 @@ captures/
 
 # Release folder
 app/release/
+
+# VSCode
+.vscode
