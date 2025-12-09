@@ -42,6 +42,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     val response by viewModel.response.collectAsState()
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
+    val coroutineScope = rememberCoroutineScope()
 
     // Permission launcher for Android 13+ (SDK 33)
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -117,7 +118,6 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     var port by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
 
-    val coroutineScope = rememberCoroutineScope()
     var expandedTimezone by remember { mutableStateOf(false) }
     var selectedTimezone by remember { mutableStateOf("") }
     val timezones = remember { ZoneId.getAvailableZoneIds().sorted() }
@@ -701,8 +701,6 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                                 return@FilledTonalButton
                             }
                         }
-                    }
-
                     }
 
                     // Wrap the send logic in the permission check

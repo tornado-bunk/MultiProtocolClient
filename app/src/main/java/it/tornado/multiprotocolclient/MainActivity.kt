@@ -25,6 +25,11 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.LaunchedEffect
 import it.tornado.multiprotocolclient.ui.theme.MultiProtocolClientTheme
 import it.tornado.multiprotocolclient.screens.AboutScreen
 import it.tornado.multiprotocolclient.screens.ClientScreen
@@ -64,6 +69,19 @@ fun MainScreen(navController: NavHostController) {
     )
 
     var selectedItemIndex by remember { mutableIntStateOf(0) }
+
+    // Request permissions at startup
+    if (Build.VERSION.SDK_INT >= 33) {
+        val permissionLauncher = rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { isGranted ->
+            // Handle permission granted/denied if needed, or just let the app proceed
+        }
+
+        LaunchedEffect(Unit) {
+            permissionLauncher.launch(Manifest.permission.NEARBY_WIFI_DEVICES)
+        }
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
