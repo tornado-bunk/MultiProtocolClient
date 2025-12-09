@@ -347,16 +347,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                     expanded = expandedResolver,
                     onDismissRequest = { expandedResolver = false }
                 ) {
-                    (when {
-                        useDnsOverHttps -> listOf("Cloudflare DoH (1.1.1.1)")
-                        useDnsOverTls -> listOf(
-                            "Cloudflare (1.1.1.1)",
-                            "Google DNS (8.8.8.8)",
-                            "Quad9 (9.9.9.9)"
-                        )
-
-                        else -> resolvers
-                    }).forEach { resolver ->
+                    resolvers.forEach { resolver ->
                         DropdownMenuItem(
                             text = { Text(resolver) },
                             onClick = {
@@ -390,16 +381,15 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                                     if (checked) {
                                         useDnsOverTls = false
                                         useTcp4Dns = true
-                                        selectedResolver = "Cloudflare DoH (1.1.1.1)"
-                                        coroutineScope.launch {
-                                            Toast.makeText(
-                                                context,
-                                                "Currently only Cloudflare DNS over HTTPS is supported",
-                                                Toast.LENGTH_LONG
-                                            ).show()
+                                        // Default to Cloudflare but allow change
+                                        if (!selectedResolver.contains("Cloudflare") && 
+                                            !selectedResolver.contains("Google") && 
+                                            !selectedResolver.contains("Quad9") &&
+                                            !selectedResolver.contains("OpenDNS") &&
+                                            !selectedResolver.contains("AdGuard")) {
+                                             selectedResolver = "Cloudflare (1.1.1.1)"
                                         }
                                     } else {
-                                        selectedResolver = "Google DNS (8.8.8.8)"
                                         useTcp4Dns = false
                                     }
                                 }
@@ -418,9 +408,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                                     if (checked) {
                                         useDnsOverHttps = false
                                         useTcp4Dns = true
-                                        selectedResolver = "Cloudflare (1.1.1.1)"
                                     } else {
-                                        selectedResolver = "Google DNS (8.8.8.8)"
                                         useTcp4Dns = false
                                     }
                                 }

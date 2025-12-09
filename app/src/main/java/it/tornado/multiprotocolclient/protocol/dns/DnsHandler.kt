@@ -29,85 +29,67 @@ class DnsHandler {
             emit(listOf("Processing DNS query for ${request.domain}..."))
 
             when {
-                //Case when the user wants to use DNS over HTTPS - Only Cloudflare is supported
+                // Case when the user wants to use DNS over HTTPS
                 request.useHttps -> {
-                    emit(listOf("Using DNS over HTTPS with Cloudflare\n"))
+                    val provider = getDnsProvider(request.selectedResolver)
+                    emit(listOf("Using DNS over HTTPS with ${provider.hostname}\n"))
                     try {
-                        // Crating the URL for the request
-                        val url = URL("https://cloudflare-dns.com/dns-query?name=${request.domain}&type=${request.queryType}")
-                        val connection = url.openConnection() as HttpsURLConnection
-                        // Setting the request method and the accept header
-                        connection.requestMethod = "GET"
-                        connection.setRequestProperty("accept", "application/dns-json")
+                        val type = getDnsType(request.queryType)
+                        val name = getDnsName(request.domain, request.queryType)
 
-                        val response = connection.inputStream.bufferedReader().use { it.readText() }
-
-                        // Format the response in JSON if possible
-                        try {
-                            val jsonResponse = JSONObject(response)
-                            emit(listOf("Formatted Response:"))
-
-                            // Map the DNS types to "normal" name
-                            val dnsTypes = mapOf(
-                                1 to "A",
-                                2 to "NS",
-                                5 to "CNAME",
-                                15 to "MX",
-                                12 to "PTR",
-                                255 to "ANY"
-                            )
-
-                            // Get the status code and act accordingly
-                            when (jsonResponse.optInt("Status", 0)) {
-                                0 -> {
-                                    val answers = jsonResponse.optJSONArray("Answer")
-                                    if (answers != null && answers.length() > 0) {
-                                        emit(listOf("\nAnswer Section:"))
-                                        for (i in 0 until answers.length()) {
-                                            val answer = answers.getJSONObject(i)
-                                            val typeNum = answer.optInt("type")
-                                            val typeStr = dnsTypes[typeNum] ?: "TYPE$typeNum"
-                                            emit(listOf("""
-                                Name: ${answer.optString("name")}
-                                Type: $typeStr (${answer.optString("type")})
-                                TTL: ${answer.optInt("TTL")}
-                                Data: ${answer.optString("data")}
-                                """.trimIndent() + "\n"))
-                                        }
-                                    } else {
-                                        emit(listOf("No answers found or invalid response format\n"))
-                                    }
-                                }
-                                // Handle the different status codes
-                                3 -> emit(listOf("Domain does not exist (NXDOMAIN)"))
-                                2 -> emit(listOf("Server failed to complete the request (SERVFAIL)"))
-                                5 -> emit(listOf("Query refused by server"))
-                                else -> emit(listOf("Unknown status code: ${jsonResponse.optInt("Status")}"))
-                            }
-
-                            // Adding the raw response to the output
-                            emit(listOf("Raw Response:"))
-                            emit(listOf(jsonResponse.toString(2)))
-
-                        } catch (e: Exception) {
-                            // If the response is not in JSON format, just print it as is
-                            emit(listOf("Raw Response: $response"))
+                        // Create the DNS query
+                        val record = Record.newRecord(name, type, DClass.IN)
+                        val query = Message.newQuery(record)
+                        if (request.useRecursion) {
+                            query.header.setFlag(Flags.RD.toInt())
                         }
+                        
+                        // Convert to wire format
+                        val wireFormat = query.toWire()
+
+                        // Creating the URL for the request
+                        val url = URL(provider.dohUrl)
+                        val connection = url.openConnection() as HttpsURLConnection
+                        
+                        // Setting the request method and headers for RFC 8484
+                        connection.requestMethod = "POST"
+                        connection.doOutput = true
+                        connection.setRequestProperty("Content-Type", "application/dns-message")
+                        connection.setRequestProperty("Accept", "application/dns-message")
+                        
+                        // Send binary data
+                        connection.outputStream.use { os ->
+                            os.write(wireFormat)
+                        }
+
+                        // Read binary response
+                        val responseBytes = connection.inputStream.readBytes()
+                        
+                        // Parse response
+                        val response = Message(responseBytes)
+                        processAndEmitResponse(response)
+
                     } catch (e: Exception) {
                         emit(listOf("DNS over HTTPS Error: ${e.message}"))
                     }
                 }
+                
                 // Case when the user wants to use DNS over TLS
                 request.useTls -> {
                     try {
-                        // Get the IP of the selected resolver
-                        val resolverIP = getResolverIP(request.selectedResolver)
-                        emit(listOf("Using DNS over TLS with ${request.selectedResolver}\n"))
+                        val provider = getDnsProvider(request.selectedResolver)
+                        emit(listOf("Using DNS over TLS with ${provider.hostname}\n"))
 
                         // Create the SSL context and socket
                         val sslContext = SSLContext.getInstance("TLS")
                         sslContext.init(null, null, null)
-                        val socket = sslContext.socketFactory.createSocket(resolverIP, 853) as SSLSocket
+                        
+                        // Use hostname for SNI and certificate validation
+                        val socket = sslContext.socketFactory.createSocket(provider.hostname, 853) as SSLSocket
+                        
+                        val sslParameters = socket.sslParameters
+                        sslParameters.endpointIdentificationAlgorithm = "HTTPS"
+                        socket.sslParameters = sslParameters
                         socket.soTimeout = 5000
 
                         emit(listOf("TLS connection established"))
@@ -149,10 +131,10 @@ class DnsHandler {
                 // Normal DNS query
                 else -> {
                     try {
-                        val resolverIP = getResolverIP(request.selectedResolver)
-                        emit(listOf("Using DNS resolver: $resolverIP"))
+                        val provider = getDnsProvider(request.selectedResolver)
+                        emit(listOf("Using DNS resolver: ${provider.ip}"))
 
-                        val resolver = SimpleResolver(resolverIP)
+                        val resolver = SimpleResolver(provider.ip)
                         resolver.timeout = Duration.ofSeconds(5)
 
                         if (request.useTcp) {
@@ -206,8 +188,8 @@ class DnsHandler {
         }
     }
 
-    private fun getResolverIP(resolver: String): String {
-        return DnsConstants.RESOLVERS[resolver] ?: "8.8.8.8"
+    private fun getDnsProvider(resolver: String): DnsConstants.DnsProvider {
+        return DnsConstants.RESOLVERS[resolver] ?: DnsConstants.FALLBACK_PROVIDER
     }
 
     private suspend fun FlowCollector<List<String>>.processAndEmitResponse(response: Message) {
