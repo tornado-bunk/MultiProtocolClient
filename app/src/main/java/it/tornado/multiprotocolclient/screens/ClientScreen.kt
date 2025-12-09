@@ -112,7 +112,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     var seeOnlyStatusCode by remember { mutableStateOf(false) }
     var trustSelfSigned by remember { mutableStateOf(false) }
 
-    val protocols = listOf("HTTP", "DNS", "NTP", "Custom")
+    val protocols = listOf("HTTP", "DNS", "NTP", "Ping", "Traceroute", "Custom")
     var selectedProtocol by remember { mutableStateOf(protocols[0]) }
     var ipAddress by remember { mutableStateOf("") }
     var port by remember { mutableStateOf("") }
@@ -165,6 +165,10 @@ fun ClientScreen(modifier: Modifier = Modifier) {
             "NTP" -> {
                 selectedTimezone = ZoneId.systemDefault().id
                 useSystemTimezone = true
+            }
+
+            "Ping", "Traceroute" -> {
+                // No specific reset needed beyond common fields
             }
 
             "Custom" -> {
@@ -543,6 +547,18 @@ fun ClientScreen(modifier: Modifier = Modifier) {
         }
 
         // Show additional fields based on the selected protocol
+        if (selectedProtocol == "Ping" || selectedProtocol == "Traceroute") {
+            Spacer(modifier = Modifier.height(16.dp))
+            OutlinedTextField(
+                value = ipAddress,
+                onValueChange = { ipAddress = it },
+                label = { Text("Host") },
+                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        // Show additional fields based on the selected protocol
         if (selectedProtocol == "Custom") {
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -689,6 +705,19 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                                 return@FilledTonalButton
                             }
                         }
+
+                        "Ping", "Traceroute" -> {
+                            if (ipAddress.isEmpty()) {
+                                coroutineScope.launch {
+                                    Toast.makeText(
+                                        context,
+                                        "Host is required",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                                return@FilledTonalButton
+                            }
+                        }
                     }
 
                     // Wrap the send logic in the permission check
@@ -720,6 +749,8 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                                     useTcp4Dns
                                 )
                             }
+                            "Ping" -> viewModel.sendPingRequest(ipAddress)
+                            "Traceroute" -> viewModel.sendTracerouteRequest(ipAddress)
                         }
                         coroutineScope.launch {
                             Toast.makeText(context, "Request Sent", Toast.LENGTH_SHORT).show()
@@ -759,6 +790,10 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             ipAddress = ""
                             selectedTimezone = ZoneId.systemDefault().id
                             useSystemTimezone = true
+                        }
+
+                        "Ping", "Traceroute" -> {
+                            ipAddress = ""
                         }
 
                         "Custom" -> {

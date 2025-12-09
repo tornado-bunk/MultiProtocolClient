@@ -10,6 +10,8 @@ import it.tornado.multiprotocolclient.protocol.http.HttpHandler
 import it.tornado.multiprotocolclient.protocol.http.HttpRequest
 import it.tornado.multiprotocolclient.protocol.ntp.NtpHandler
 import it.tornado.multiprotocolclient.protocol.ntp.NtpRequest
+import it.tornado.multiprotocolclient.protocol.diagnostics.PingHandler
+import it.tornado.multiprotocolclient.protocol.diagnostics.TracerouteHandler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,6 +25,8 @@ class ClientViewModel : ViewModel() {
     private val httpHandler = HttpHandler()
     private val ntpHandler = NtpHandler()
     private val customHandler = CustomHandler()
+    private val pingHandler = PingHandler()
+    private val tracerouteHandler = TracerouteHandler()
 
     //HTTP Section
     fun sendHttpRequest(
@@ -122,6 +126,22 @@ class ClientViewModel : ViewModel() {
             customHandler.processCustomRequest(request).collect { chunk ->
                 _response.value += chunk
             }
+        }
+    }
+
+    // Ping Section
+    fun sendPingRequest(host: String) {
+        viewModelScope.launch {
+            val result = pingHandler.executePing(host)
+            _response.value += result
+        }
+    }
+
+    // Traceroute Section
+    fun sendTracerouteRequest(host: String) {
+        viewModelScope.launch {
+            val result = tracerouteHandler.executeTraceroute(host)
+            _response.value += result
         }
     }
 
