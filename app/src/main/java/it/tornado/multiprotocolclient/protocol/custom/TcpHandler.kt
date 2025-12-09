@@ -40,12 +40,14 @@ class TcpHandler {
             emit(listOf("Sent message: $testMessage"))
 
             // Read response
-            val response = reader.readLine()
-            if (response != null) {
-                emit(listOf("Received response: $response"))
-            } else {
-                emit(listOf("No response received"))
+            // Read response continuously
+            val buffer = CharArray(1024)
+            var bytesRead: Int
+            while (reader.read(buffer).also { bytesRead = it } != -1) {
+                val chunk = String(buffer, 0, bytesRead)
+                emit(listOf(chunk))
             }
+            emit(listOf("\nServer closed connection"))
 
         } catch (e: Exception) {
             emit(listOf("Error: ${e.javaClass.simpleName} - ${e.message}"))

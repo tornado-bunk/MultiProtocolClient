@@ -28,18 +28,30 @@ class HttpHandler {
                 val url = URL(urlString)
                 var connection = url.openConnection() as HttpURLConnection
 
-                if (connection is HttpsURLConnection && !request.trustSelfSigned) {
-                    emit(listOf("Verifying SSL certificate...\n"))
-                    try {
-                        connection.connect()
-                    } catch (e: Exception) {
-                        emit(listOf("SSL Certificate Error: ${e.message}"))
-                        return@flow
+                if (connection is HttpsURLConnection) {
+                    if (request.trustSelfSigned) {
+                        try {
+                            val trustAllCerts = arrayOf<TrustManager>(@SuppressLint("CustomX509TrustManager")
+                            object : X509TrustManager {
+                                override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
+                                @SuppressLint("TrustAllX509TrustManager")
+                                override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
+                                @SuppressLint("TrustAllX509TrustManager")
+                                override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
+                            })
+
+                            val sc = SSLContext.getInstance("SSL")
+                            sc.init(null, trustAllCerts, java.security.SecureRandom())
+                            connection.sslSocketFactory = sc.socketFactory
+                            
+                            val allHostsValid = HostnameVerifier { _, _ -> true }
+                            connection.hostnameVerifier = allHostsValid
+                            
+                            emit(listOf("Trusting all SSL certificates...\n"))
+                        } catch (e: Exception) {
+                            emit(listOf("Error setting up SSL trust: ${e.message}"))
+                        }
                     }
-                } else if (connection is HttpsURLConnection) {
-                    val trustingConnection = createTrustingConnection(url)
-                    connection.disconnect()
-                    connection = trustingConnection
                 }
 
                 // Set connection parameters
@@ -71,29 +83,4 @@ class HttpHandler {
         }
     }.flowOn(Dispatchers.IO)
 
-    // Function to create a trusting connection
-    private fun createTrustingConnection(url: URL): HttpURLConnection {
-        // Create a TrustManager that trusts all certificates
-        val trustAllCerts = arrayOf<TrustManager>(@SuppressLint("CustomX509TrustManager")
-        object : X509TrustManager {
-            override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
-
-            @SuppressLint("TrustAllX509TrustManager")
-            override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
-
-            @SuppressLint("TrustAllX509TrustManager")
-            override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
-        })
-
-        // Create an SSLContext that uses the TrustManager
-        val sc = SSLContext.getInstance("SSL")
-        sc.init(null, trustAllCerts, java.security.SecureRandom())
-        HttpsURLConnection.setDefaultSSLSocketFactory(sc.socketFactory)
-
-        // Create a HostnameVerifier that trusts all hosts
-        val allHostsValid = HostnameVerifier { _, _ -> true }
-        HttpsURLConnection.setDefaultHostnameVerifier(allHostsValid)
-
-        return url.openConnection() as HttpURLConnection
-    }
 }

@@ -61,7 +61,16 @@ class NtpHandler {
     // Convert the NTP time to a LocalDateTime object
     private fun convertToLocalDateTime(ntpTime: Long, timezone: String): LocalDateTime {
         val instant = Instant.ofEpochMilli(ntpTime)
-        return LocalDateTime.ofInstant(instant, ZoneId.of(timezone))
+        val zoneId = if (timezone.isBlank() || timezone.equals("Auto", ignoreCase = true)) {
+            ZoneId.systemDefault()
+        } else {
+            try {
+                ZoneId.of(timezone)
+            } catch (e: Exception) {
+                ZoneId.systemDefault()
+            }
+        }
+        return LocalDateTime.ofInstant(instant, zoneId)
     }
 
     // Emit the formatted response
