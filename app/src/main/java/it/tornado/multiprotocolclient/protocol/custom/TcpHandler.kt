@@ -14,7 +14,8 @@ class TcpHandler {
     // Handle TCP connection
     fun handleConnection(
         ip: String,
-        port: Int
+        port: Int,
+        message: String
     ): Flow<List<String>> = flow {
         var socket: Socket? = null
         var writer: PrintWriter? = null
@@ -35,9 +36,8 @@ class TcpHandler {
             reader = BufferedReader(InputStreamReader(socket.getInputStream()))
 
             // Send message
-            val testMessage = "TEST from MultiProtocolClient"
-            writer.println(testMessage)
-            emit(listOf("Sent message: $testMessage"))
+            writer.println(message)
+            emit(listOf("Sent message: $message"))
 
             // Read response
             // Read response continuously

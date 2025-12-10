@@ -120,6 +120,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     var selectedTimezone by remember { mutableStateOf("") }
     val timezones = remember { ZoneId.getAvailableZoneIds().sorted() }
     var useTcp by remember { mutableStateOf(true) }
+    var customMessage by remember { mutableStateOf("Hello from MultiProtocolClient") }
     var useSystemTimezone by remember { mutableStateOf(true) }
 
     var dnsQueryType by remember { mutableStateOf("A") }
@@ -187,6 +188,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
 
             "Custom" -> {
                 useTcp = true
+                customMessage = "Hello from MultiProtocolClient"
             }
         }
 
@@ -663,9 +665,18 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                         text = "TCP",
                         modifier = Modifier.padding(start = 4.dp)
                     )
-                }
+                    }
             }
-        }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = customMessage,
+                onValueChange = { customMessage = it },
+                label = { Text("Message") },
+                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
+                modifier = Modifier.fillMaxWidth()
+            )
+            }
 
         Spacer(modifier = Modifier.height(16.dp))
         Row(
@@ -785,7 +796,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             )
 
                             "NTP" -> viewModel.sendNtpRequest(ipAddress, selectedTimezone)
-                            "Custom" -> viewModel.sendCustomRequest(ipAddress, port, useTcp)
+                            "Custom" -> viewModel.sendCustomRequest(ipAddress, port, customMessage, useTcp)
                             "DNS" -> {
                                 // DNS might be exempt if using system DNS, but if direct IP query to local resolver:
                                  viewModel.sendDnsRequest(
