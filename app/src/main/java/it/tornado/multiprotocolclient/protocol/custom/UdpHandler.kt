@@ -10,20 +10,19 @@ import java.net.InetAddress
 
 class UdpHandler {
     // Function to handle the UDP connection
-    fun handleConnection(ip: String, port: Int): Flow<List<String>> = flow {
+    fun handleConnection(ip: String, port: Int, messageText: String): Flow<List<String>> = flow {
         // Create a new DatagramSocket and set the timeout
         val socket = DatagramSocket()
         socket.soTimeout = SOCKET_TIMEOUT
 
         try {
             // Adding a TEST message to the UDP packet
-            val messageNotEncoded = "TEST from MultiProtocolClient"
-            val message = messageNotEncoded.toByteArray()
+            val message = messageText.toByteArray()
             val address = InetAddress.getByName(ip)
             val sendPacket = DatagramPacket(message, message.size, address, port)
 
             socket.send(sendPacket)
-            emit(listOf("UDP packet sent: $messageNotEncoded\n"))
+            emit(listOf("UDP packet sent: $messageText\n"))
 
             val buffer = ByteArray(BUFFER_SIZE)
             val receivePacket = DatagramPacket(buffer, buffer.size)

@@ -110,12 +110,14 @@ class ClientViewModel : ViewModel() {
     fun sendCustomRequest(
         ip: String,
         port: String,
+        message: String,
         useTcp: Boolean
     ) {
         viewModelScope.launch {
             val request = CustomRequest(
                 ip = ip.trim(),
                 port = port.trim(),
+                message = message,
                 useTcp = useTcp
             )
 

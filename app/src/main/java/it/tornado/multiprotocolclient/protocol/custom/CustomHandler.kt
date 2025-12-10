@@ -20,9 +20,9 @@ class CustomHandler {
 
         try {
             val handler = if (request.useTcp) {
-                tcpHandler.handleConnection(request.ip, request.port.toInt())
+                tcpHandler.handleConnection(request.ip, request.port.toInt(), request.message)
             } else {
-                udpHandler.handleConnection(request.ip, request.port.toInt())
+                udpHandler.handleConnection(request.ip, request.port.toInt(), request.message)
             }
 
             handler.collect { message ->
