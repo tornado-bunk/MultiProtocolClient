@@ -28,10 +28,7 @@ import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import java.net.InetAddress
-import java.net.UnknownHostException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+
 
 import java.time.ZoneId
 
@@ -109,10 +106,11 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     }
 
     var useSSL by remember { mutableStateOf(true) }
+    var useStartTls by remember { mutableStateOf(false) }
     var seeOnlyStatusCode by remember { mutableStateOf(false) }
     var trustSelfSigned by remember { mutableStateOf(false) }
 
-    val protocols = listOf("HTTP", "DNS", "NTP", "Ping", "Traceroute", "Custom")
+    val protocols = listOf("HTTP", "DNS", "NTP", "Ping", "Traceroute", "SMTP", "POP3", "IMAP", "Custom")
     var selectedProtocol by remember { mutableStateOf(protocols[0]) }
     var ipAddress by remember { mutableStateOf("") }
     var port by remember { mutableStateOf("") }
@@ -171,6 +169,22 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                 // No specific reset needed beyond common fields
             }
 
+            "SMTP" -> {
+                port = "587" // Default to STARTTLS preferred often, or 25. Let's say 587 + STARTTLS
+                useSSL = false
+                useStartTls = true
+            }
+
+            "POP3" -> {
+                port = "110"
+                useSSL = false
+            }
+
+            "IMAP" -> {
+                port = "143"
+                useSSL = false
+            }
+
             "Custom" -> {
                 useTcp = true
             }
@@ -219,7 +233,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
         }
 
         // Show additional fields based on the selected protocol
-        if (selectedProtocol == "HTTP") {
+        if (selectedProtocol == "HTTP" || selectedProtocol == "SMTP" || selectedProtocol == "POP3" || selectedProtocol == "IMAP") {
             Spacer(modifier = Modifier.height(16.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -251,16 +265,51 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                         checked = useSSL,
                         onCheckedChange = {
                             useSSL = it
-                            port = if (it) "443" else "80"
+                            if (it) {
+                                useStartTls = false // Mutual exclusive usually for port defaults
+                            }
+                            
+                            if (selectedProtocol == "HTTP") {
+                                port = if (it) "443" else "80"
+                            } else if (selectedProtocol == "SMTP") {
+                                // If SSL is on -> 465. If Off -> Check STARTTLS logic later, but here if SSL off, restore 25 or 587?
+                                // Simplified: SSL On -> 465. SSL Off -> 25 (User can enable STARTTLS to get 587)
+                                port = if (it) "465" else "25"
+                            } else if (selectedProtocol == "POP3") {
+                                port = if (it) "995" else "110"
+                            } else if (selectedProtocol == "IMAP") {
+                                port = if (it) "993" else "143"
+                            }
                         }
                     )
                     Text(text = "Use SSL")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Checkbox(
-                        checked = seeOnlyStatusCode,
-                        onCheckedChange = { seeOnlyStatusCode = it }
-                    )
-                    Text(text = "Only status code")
+                    
+                    if (selectedProtocol == "HTTP") {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Checkbox(
+                            checked = seeOnlyStatusCode,
+                            onCheckedChange = { seeOnlyStatusCode = it }
+                        )
+                        Text(text = "Only status code")
+                    }
+
+                    if (selectedProtocol == "SMTP") {
+                        Spacer(modifier = Modifier.width(8.dp))
+                         Checkbox(
+                            checked = useStartTls,
+                            onCheckedChange = { 
+                                useStartTls = it 
+                                if (it) {
+                                    useSSL = false
+                                    port = "587"
+                                } else {
+                                     // If turning off STARTTLS, go back to 25?
+                                     if (!useSSL) port = "25"
+                                }
+                            }
+                        )
+                        Text(text = "Use STARTTLS")
+                    }
                 }
 
                 // Show the option to trust self-signed certificates only if SSL is enabled
@@ -634,7 +683,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                     }
 
                     when (selectedProtocol) {
-                        "Custom", "HTTP" -> {
+                        "Custom", "HTTP", "SMTP", "POP3", "IMAP" -> {
                             if (port.isEmpty()) {
                                 coroutineScope.launch {
                                     Toast.makeText(
@@ -751,6 +800,9 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             }
                             "Ping" -> viewModel.sendPingRequest(ipAddress)
                             "Traceroute" -> viewModel.sendTracerouteRequest(ipAddress)
+                            "SMTP" -> viewModel.sendSmtpRequest(ipAddress, port, useSSL, useStartTls)
+                            "POP3" -> viewModel.sendPop3Request(ipAddress, port, useSSL)
+                            "IMAP" -> viewModel.sendImapRequest(ipAddress, port, useSSL)
                         }
                         coroutineScope.launch {
                             Toast.makeText(context, "Request Sent", Toast.LENGTH_SHORT).show()
@@ -794,6 +846,25 @@ fun ClientScreen(modifier: Modifier = Modifier) {
 
                         "Ping", "Traceroute" -> {
                             ipAddress = ""
+                        }
+
+                        "SMTP" -> {
+                            ipAddress = ""
+                            port = "587"
+                            useSSL = false
+                            useStartTls = true
+                        }
+
+                        "POP3" -> {
+                            ipAddress = ""
+                            port = "110"
+                            useSSL = false
+                        }
+
+                        "IMAP" -> {
+                            ipAddress = ""
+                            port = "143"
+                            useSSL = false
                         }
 
                         "Custom" -> {

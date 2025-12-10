@@ -12,6 +12,9 @@ import it.tornado.multiprotocolclient.protocol.ntp.NtpHandler
 import it.tornado.multiprotocolclient.protocol.ntp.NtpRequest
 import it.tornado.multiprotocolclient.protocol.diagnostics.PingHandler
 import it.tornado.multiprotocolclient.protocol.diagnostics.TracerouteHandler
+import it.tornado.multiprotocolclient.protocol.mail.SmtpHandler
+import it.tornado.multiprotocolclient.protocol.mail.Pop3Handler
+import it.tornado.multiprotocolclient.protocol.mail.ImapHandler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,6 +30,9 @@ class ClientViewModel : ViewModel() {
     private val customHandler = CustomHandler()
     private val pingHandler = PingHandler()
     private val tracerouteHandler = TracerouteHandler()
+    private val smtpHandler = SmtpHandler()
+    private val pop3Handler = Pop3Handler()
+    private val imapHandler = ImapHandler()
 
     //HTTP Section
     fun sendHttpRequest(
@@ -142,6 +148,48 @@ class ClientViewModel : ViewModel() {
         viewModelScope.launch {
             val result = tracerouteHandler.executeTraceroute(host)
             _response.value += result
+        }
+    }
+
+    // SMTP Section
+    fun sendSmtpRequest(host: String, port: String, useSsl: Boolean, useStartTls: Boolean) {
+        viewModelScope.launch {
+            try {
+                 val portInt = port.toInt()
+                 smtpHandler.testSmtp(host, portInt, useSsl, useStartTls).collect { chunk ->
+                    _response.value += chunk
+                }
+            } catch (e: Exception) {
+                 _response.value += listOf("Invalid port or error: ${e.message}")
+            }
+        }
+    }
+
+    // POP3 Section
+    fun sendPop3Request(host: String, port: String, useSsl: Boolean) {
+        viewModelScope.launch {
+             try {
+                 val portInt = port.toInt()
+                 pop3Handler.testPop3(host, portInt, useSsl).collect { chunk ->
+                    _response.value += chunk
+                }
+            } catch (e: Exception) {
+                 _response.value += listOf("Invalid port or error: ${e.message}")
+            }
+        }
+    }
+
+    // IMAP Section
+    fun sendImapRequest(host: String, port: String, useSsl: Boolean) {
+        viewModelScope.launch {
+             try {
+                 val portInt = port.toInt()
+                 imapHandler.testImap(host, portInt, useSsl).collect { chunk ->
+                    _response.value += chunk
+                }
+            } catch (e: Exception) {
+                 _response.value += listOf("Invalid port or error: ${e.message}")
+            }
         }
     }
 

@@ -47,12 +47,12 @@
 - Ping
 - Traceroute
 
-## 🚀 Upcoming Features
-
 ### 📧 Email Protocols
 - SMTP (25/587)
 - POP3 (110/995)
 - IMAP (143/993)
+
+## 🚀 Upcoming Features
 
 ### 🔐 Remote Access
 - Telnet (23)
