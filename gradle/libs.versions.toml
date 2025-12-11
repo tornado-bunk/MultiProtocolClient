@@ -1,21 +1,24 @@
 [versions]
-agp = "8.13.1"
-androidxMaterial3 = "1.3.1"
-dnsjavaDnsjava = "3.5.2"
-jsonJson = "20231013"
-kotlin = "2.0.21"
-coreKtx = "1.15.0"
+agp = "8.13.2"
+androidxMaterial3 = "1.4.0"
+dnsjavaDnsjava = "3.6.3"
+jsonJson = "20250517"
+kotlin = "2.2.21"
+coreKtx = "1.17.0"
 junit = "4.13.2"
-junitVersion = "1.2.1"
-espressoCore = "3.6.1"
-lifecycleRuntimeKtx = "2.8.7"
-activityCompose = "1.10.0"
-composeBom = "2025.02.00"
-compose = "1.7.8"
-material = "1.12.0"
-lifecycleRuntimeCompose = "2.8.7"
+junitVersion = "1.3.0"
+espressoCore = "3.7.0"
+lifecycleRuntimeKtx = "2.10.0"
+activityCompose = "1.12.1"
+composeBom = "2025.12.00"
+compose = "1.10.0"
+material = "1.13.0"
+lifecycleRuntimeCompose = "2.10.0"
 materialIconsExtended = "1.7.8"
-navigationCompose = "2.8.7"
+navigationCompose = "2.9.6"
+commonsNet = "3.12.0"
+sshj = "0.40.0"
+slf4j = "2.0.17"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -38,6 +41,9 @@ androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit
 androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycleRuntimeCompose" }
 material = { module = "com.google.android.material:material", version.ref = "material" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
+commons-net = { module = "commons-net:commons-net", version.ref = "commonsNet" }
+sshj = { module = "com.hierynomus:sshj", version.ref = "sshj" }
+slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
