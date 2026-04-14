@@ -21,8 +21,7 @@ object DnsConstants {
             ip = "1.1.1.1",
             hostname = "1dot1dot1dot1.cloudflare-dns.com",
             dohUrl = "https://cloudflare-dns.com/dns-query",
-            supportsDoq = true,
-            doqPort = 853
+            supportsDoq = false
         ),
         "OpenDNS (208.67.222.222)" to DnsProvider(
             ip = "208.67.222.222",
