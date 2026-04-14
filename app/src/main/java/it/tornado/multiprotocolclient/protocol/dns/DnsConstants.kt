@@ -21,7 +21,8 @@ object DnsConstants {
             ip = "1.1.1.1",
             hostname = "1dot1dot1dot1.cloudflare-dns.com",
             dohUrl = "https://cloudflare-dns.com/dns-query",
-            supportsDoq = false
+            supportsDoq = true,
+            doqPort = 853
         ),
         "OpenDNS (208.67.222.222)" to DnsProvider(
             ip = "208.67.222.222",
@@ -33,7 +34,8 @@ object DnsConstants {
             ip = "9.9.9.9",
             hostname = "dns.quad9.net",
             dohUrl = "https://dns.quad9.net/dns-query",
-            supportsDoq = false
+            supportsDoq = true,
+            doqPort = 853
         ),
         "AdGuard DNS (94.140.14.14)" to DnsProvider(
             ip = "94.140.14.14",
