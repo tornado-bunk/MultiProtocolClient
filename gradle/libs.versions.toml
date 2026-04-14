@@ -1,22 +1,23 @@
 [versions]
 agp = "9.1.1"
 androidxMaterial3 = "1.4.0"
-dnsjavaDnsjava = "3.6.3"
-jsonJson = "20250517"
-kotlin = "2.2.21"
-coreKtx = "1.17.0"
+bcprovJdk18on = "1.84"
+dnsjavaDnsjava = "3.6.4"
+jsonJson = "20251224"
+kotlin = "2.3.20"
+coreKtx = "1.18.0"
 junit = "4.13.2"
 junitVersion = "1.3.0"
 espressoCore = "3.7.0"
 lifecycleRuntimeKtx = "2.10.0"
-activityCompose = "1.12.1"
-composeBom = "2025.12.00"
-compose = "1.10.0"
+activityCompose = "1.13.0"
+composeBom = "2026.03.01"
+compose = "1.10.6"
 material = "1.13.0"
 lifecycleRuntimeCompose = "2.10.0"
 materialIconsExtended = "1.7.8"
-navigationCompose = "2.9.6"
-commonsNet = "3.12.0"
+navigationCompose = "2.9.7"
+commonsNet = "3.13.0"
 sshj = "0.40.0"
 slf4j = "2.0.17"
 cronet = "18.1.1"
@@ -26,6 +27,7 @@ kwik = "0.10.8"
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
 androidx-material3-v131 = { module = "androidx.compose.material3:material3", version.ref = "androidxMaterial3" }
+bcprov-jdk18on = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bcprovJdk18on" }
 dnsjava-dnsjava = { module = "dnsjava:dnsjava", version.ref = "dnsjavaDnsjava" }
 json-json = { module = "org.json:json", version.ref = "jsonJson" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
