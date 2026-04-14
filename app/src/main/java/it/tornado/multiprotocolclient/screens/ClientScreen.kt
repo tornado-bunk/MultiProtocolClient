@@ -113,7 +113,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     var seeOnlyStatusCode by remember { mutableStateOf(false) }
     var trustSelfSigned by remember { mutableStateOf(false) }
 
-    val protocols = listOf("HTTP", "DNS", "NTP", "Ping", "Traceroute", "SMTP", "POP3", "IMAP", "Telnet", "SSH", "Custom")
+    val protocols = listOf("HTTP", "DNS", "NTP", "Ping", "Traceroute", "SMTP", "POP3", "IMAP", "Telnet", "SSH", "WoL", "Custom")
     var selectedProtocol by remember { mutableStateOf(protocols[0]) }
     var ipAddress by remember { mutableStateOf("") }
     var port by remember { mutableStateOf("") }
@@ -128,6 +128,9 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     
     var sshUsername by remember { mutableStateOf("") }
     var sshPassword by remember { mutableStateOf("") }
+
+    var wolMacAddress by remember { mutableStateOf("") }
+    var wolBroadcast by remember { mutableStateOf("255.255.255.255") }
 
     var dnsQueryType by remember { mutableStateOf("A") }
     val dnsTypes = listOf("A", "MX", "CNAME", "NS", "PTR", "ANY")
@@ -821,6 +824,26 @@ fun ClientScreen(modifier: Modifier = Modifier) {
             }
         }
 
+        // WoL fields
+        if (selectedProtocol == "WoL") {
+            Spacer(modifier = Modifier.height(16.dp))
+            OutlinedTextField(
+                value = wolMacAddress,
+                onValueChange = { wolMacAddress = it },
+                label = { Text("MAC Address (AA:BB:CC:DD:EE:FF)") },
+                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = wolBroadcast,
+                onValueChange = { wolBroadcast = it },
+                label = { Text("Broadcast Address") },
+                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
         // Show additional fields based on the selected protocol
         if (selectedProtocol == "Custom") {
             Spacer(modifier = Modifier.height(16.dp))
@@ -962,6 +985,11 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             port = "22"
                         }
 
+                        "WoL" -> {
+                            wolMacAddress = ""
+                            wolBroadcast = "255.255.255.255"
+                        }
+
                         "Custom" -> {
                             ipAddress = ""
                             port = ""
@@ -993,7 +1021,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
 
                 FilledTonalButton(
                     onClick = {
-                    if (ipAddress.isEmpty()) {
+                    if (selectedProtocol != "WoL" && ipAddress.isEmpty()) {
                         coroutineScope.launch {
                             Toast.makeText(context, "Host is required", Toast.LENGTH_SHORT)
                                 .show()
@@ -1130,6 +1158,14 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                                 return@FilledTonalButton
                             }
                         }
+                        "WoL" -> {
+                            if (wolMacAddress.isEmpty()) {
+                                coroutineScope.launch {
+                                    Toast.makeText(context, "MAC address is required", Toast.LENGTH_SHORT).show()
+                                }
+                                return@FilledTonalButton
+                            }
+                        }
                     }
 
                     // Wrap the send logic in the permission check
@@ -1193,6 +1229,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             "SMTP" -> viewModel.sendSmtpRequest(ipAddress, port, useSSL, useStartTls)
                             "POP3" -> viewModel.sendPop3Request(ipAddress, port, useSSL)
                             "IMAP" -> viewModel.sendImapRequest(ipAddress, port, useSSL)
+                            "WoL" -> viewModel.sendWolRequest(wolMacAddress, wolBroadcast)
                         }
                         coroutineScope.launch {
                             Toast.makeText(context, "Request Sent", Toast.LENGTH_SHORT).show()

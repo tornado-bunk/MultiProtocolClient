@@ -19,6 +19,7 @@ import it.tornado.multiprotocolclient.protocol.mail.Pop3Handler
 import it.tornado.multiprotocolclient.protocol.mail.ImapHandler
 import it.tornado.multiprotocolclient.protocol.ssh.InteractiveSshHandler
 import it.tornado.multiprotocolclient.protocol.telnet.InteractiveTelnetHandler
+import it.tornado.multiprotocolclient.protocol.wol.WolHandler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -39,6 +40,7 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
     private val smtpHandler = SmtpHandler()
     private val pop3Handler = Pop3Handler()
     private val imapHandler = ImapHandler()
+    private val wolHandler = WolHandler()
 
     init {
         // Initialize Cronet engine for HTTP/3 support
@@ -274,6 +276,15 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
                 }
             } catch (e: Exception) {
                  _response.value += listOf("Invalid port or error: ${e.message}")
+            }
+        }
+    }
+
+    // WoL Section
+    fun sendWolRequest(macAddress: String, broadcastAddress: String, port: Int = 9) {
+        viewModelScope.launch {
+            wolHandler.sendWakeOnLan(macAddress, broadcastAddress, port).collect { chunk ->
+                _response.value += chunk
             }
         }
     }
