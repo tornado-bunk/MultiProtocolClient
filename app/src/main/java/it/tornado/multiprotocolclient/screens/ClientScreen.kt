@@ -21,6 +21,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalFocusManager
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import kotlinx.coroutines.launch
 import android.Manifest
 import android.os.Build
@@ -127,6 +129,11 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     val dnsTypes = listOf("A", "MX", "CNAME", "NS", "PTR", "ANY")
     var useDnsOverHttps by remember { mutableStateOf(false) }
     var useDnsOverTls by remember { mutableStateOf(false) }
+    var useDnsOverQuic by remember { mutableStateOf(false) }
+    var forceHttp3 by remember { mutableStateOf(false) }
+    var useCustomResolver by remember { mutableStateOf(false) }
+    var customResolverHost by remember { mutableStateOf("") }
+    var customResolverPort by remember { mutableStateOf("53") }
     var expandedDnsType by remember { mutableStateOf(false) }
     var expandedResolver by remember { mutableStateOf(false) }
     var useRecursion by remember { mutableStateOf(true) }
@@ -139,6 +146,9 @@ fun ClientScreen(modifier: Modifier = Modifier) {
         "Quad9 (9.9.9.9)",
         "AdGuard DNS (94.140.14.14)"
     )
+    val doqResolvers = resolvers.filter {
+        it.contains("AdGuard")
+    }
 
     //At launch, reset the fields based on the selected protocol
     LaunchedEffect(selectedProtocol) {
@@ -157,6 +167,11 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                 dnsQueryType = "A"
                 useDnsOverHttps = false
                 useDnsOverTls = false
+                useDnsOverQuic = false
+                forceHttp3 = false
+                useCustomResolver = false
+                customResolverHost = ""
+                customResolverPort = "53"
                 useRecursion = true
                 useTcp4Dns = false
             }
@@ -204,37 +219,43 @@ fun ClientScreen(modifier: Modifier = Modifier) {
             .fillMaxSize()
     ) {
         Spacer(modifier = Modifier.height(8.dp))
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = !expanded }
+        // Add a scrollable column for the entire input section so it doesn't break small screens
+        Column(
+            modifier = Modifier
+                .weight(1f) // Takes available space above response box
+                .verticalScroll(rememberScrollState())
         ) {
-            OutlinedTextField(
-                value = selectedProtocol,
-                onValueChange = { },
-                readOnly = true,
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor(MenuAnchorType.PrimaryEditable)
-            )
-
-            ExposedDropdownMenu(
+            ExposedDropdownMenuBox(
                 expanded = expanded,
-                onDismissRequest = { expanded = false }
+                onExpandedChange = { expanded = !expanded }
             ) {
-                protocols.forEach { protocol ->
-                    DropdownMenuItem(
-                        text = { Text(text = protocol) },
-                        onClick = {
-                            selectedProtocol = protocol
-                            expanded = false
-                        }
-                    )
+                OutlinedTextField(
+                    value = selectedProtocol,
+                    onValueChange = { },
+                    readOnly = true,
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(MenuAnchorType.PrimaryEditable)
+                )
+
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    protocols.forEach { protocol ->
+                        DropdownMenuItem(
+                            text = { Text(text = protocol) },
+                            onClick = {
+                                selectedProtocol = protocol
+                                expanded = false
+                            }
+                        )
+                    }
                 }
             }
-        }
 
-        // Show additional fields based on the selected protocol
+            // Show additional fields based on the selected protocol
         if (selectedProtocol == "HTTP" || selectedProtocol == "SMTP" || selectedProtocol == "POP3" || selectedProtocol == "IMAP") {
             Spacer(modifier = Modifier.height(16.dp))
             Row(
@@ -380,41 +401,98 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                 }
             }
 
-            // DNS resolver
+            // DNS resolver section
             Spacer(modifier = Modifier.height(8.dp))
-            ExposedDropdownMenuBox(
-                expanded = expandedResolver,
-                onExpandedChange = { expandedResolver = !expandedResolver }
-            ) {
-                OutlinedTextField(
-                    value = selectedResolver,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("DNS Resolver") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedResolver) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(MenuAnchorType.PrimaryEditable)
-                )
 
-                // Show the list of DNS resolvers
-                ExposedDropdownMenu(
-                    expanded = expandedResolver,
-                    onDismissRequest = { expandedResolver = false }
-                ) {
-                    resolvers.forEach { resolver ->
-                        DropdownMenuItem(
-                            text = { Text(resolver) },
-                            onClick = {
-                                selectedResolver = resolver
-                                expandedResolver = false
+            // "Use Custom DNS Server" checkbox
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 4.dp)
+            ) {
+                Checkbox(
+                    checked = useCustomResolver,
+                    onCheckedChange = { checked ->
+                        useCustomResolver = checked
+                        if (checked) {
+                            // Set default port based on current mode
+                            customResolverPort = when {
+                                useDnsOverHttps -> "443"
+                                useDnsOverTls -> "853"
+                                useDnsOverQuic -> "853"
+                                else -> "53"
                             }
-                        )
+                        }
+                    }
+                )
+                Text(text = "Use Custom DNS Server")
+            }
+
+            if (useCustomResolver) {
+                // Editable hostname + port fields
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = customResolverHost,
+                        onValueChange = { customResolverHost = it },
+                        label = { Text("Server") },
+                        placeholder = {
+                            Text(
+                                when {
+                                    useDnsOverHttps -> "e.g. dns.example.com"
+                                    useDnsOverTls -> "e.g. dns.example.com"
+                                    useDnsOverQuic -> "e.g. dns.example.com"
+                                    else -> "e.g. 1.1.1.1"
+                                }
+                            )
+                        },
+                        keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value = customResolverPort,
+                        onValueChange = { customResolverPort = it },
+                        label = { Text("Port") },
+                        keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.width(100.dp)
+                    )
+                }
+            } else {
+                // Standard resolver dropdown
+                ExposedDropdownMenuBox(
+                    expanded = expandedResolver,
+                    onExpandedChange = { expandedResolver = !expandedResolver }
+                ) {
+                    OutlinedTextField(
+                        value = selectedResolver,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("DNS Resolver") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedResolver) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(MenuAnchorType.PrimaryEditable)
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = expandedResolver,
+                        onDismissRequest = { expandedResolver = false }
+                    ) {
+                        resolvers.forEach { resolver ->
+                            DropdownMenuItem(
+                                text = { Text(resolver) },
+                                onClick = {
+                                    selectedResolver = resolver
+                                    expandedResolver = false
+                                }
+                            )
+                        }
                     }
                 }
             }
 
-            // Checkbox for DNS over HTTPS/TLS and checkbox for tcp and recursion
+            // Checkbox for DNS over HTTPS/TLS/QUIC and checkbox for tcp and recursion
             Column(
                 modifier = Modifier.padding(top = 8.dp)
             ) {
@@ -422,7 +500,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Start
                 ) {
-                    // Doh and DoT
+                    // DoH, DoT and DoQ
                     Column(
                         modifier = Modifier.weight(1f)
                     ) {
@@ -435,21 +513,35 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                                     useDnsOverHttps = checked
                                     if (checked) {
                                         useDnsOverTls = false
+                                        useDnsOverQuic = false
                                         useTcp4Dns = true
-                                        // Default to Cloudflare but allow change
-                                        if (!selectedResolver.contains("Cloudflare") && 
-                                            !selectedResolver.contains("Google") && 
-                                            !selectedResolver.contains("Quad9") &&
-                                            !selectedResolver.contains("OpenDNS") &&
-                                            !selectedResolver.contains("AdGuard")) {
-                                             selectedResolver = "Cloudflare (1.1.1.1)"
+                                        if (useCustomResolver) {
+                                            customResolverPort = "443"
                                         }
                                     } else {
                                         useTcp4Dns = false
+                                        forceHttp3 = false
+                                        if (useCustomResolver) {
+                                            customResolverPort = "53"
+                                        }
                                     }
                                 }
                             )
                             Text(text = "Use DoH")
+                        }
+
+                        // Force HTTP/3 checkbox (visible only when DoH is active)
+                        if (useDnsOverHttps) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(start = 32.dp, top = 2.dp)
+                            ) {
+                                Checkbox(
+                                    checked = forceHttp3,
+                                    onCheckedChange = { forceHttp3 = it }
+                                )
+                                Text(text = "Force HTTP/3")
+                            }
                         }
 
                         Row(
@@ -462,13 +554,52 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                                     useDnsOverTls = checked
                                     if (checked) {
                                         useDnsOverHttps = false
+                                        useDnsOverQuic = false
+                                        forceHttp3 = false
                                         useTcp4Dns = true
+                                        if (useCustomResolver) {
+                                            customResolverPort = "853"
+                                        }
                                     } else {
                                         useTcp4Dns = false
+                                        if (useCustomResolver) {
+                                            customResolverPort = "53"
+                                        }
                                     }
                                 }
                             )
                             Text(text = "Use DoT")
+                        }
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 4.dp)
+                        ) {
+                            Checkbox(
+                                checked = useDnsOverQuic,
+                                onCheckedChange = { checked ->
+                                    useDnsOverQuic = checked
+                                    if (checked) {
+                                        useDnsOverHttps = false
+                                        useDnsOverTls = false
+                                        forceHttp3 = false
+                                        useTcp4Dns = false
+                                        if (useCustomResolver) {
+                                            customResolverPort = "853"
+                                        } else {
+                                            // Default to AdGuard (supports DoQ)
+                                            if (doqResolvers.isNotEmpty() && !doqResolvers.contains(selectedResolver)) {
+                                                selectedResolver = doqResolvers.first()
+                                            }
+                                        }
+                                    } else {
+                                        if (useCustomResolver) {
+                                            customResolverPort = "53"
+                                        }
+                                    }
+                                }
+                            )
+                            Text(text = "Use DoQ")
                         }
                     }
 
@@ -493,11 +624,11 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             Checkbox(
                                 checked = useTcp4Dns,
                                 onCheckedChange = { checked ->
-                                    if (!useDnsOverHttps && !useDnsOverTls) {
+                                    if (!useDnsOverHttps && !useDnsOverTls && !useDnsOverQuic) {
                                         useTcp4Dns = checked
                                     }
                                 },
-                                enabled = !useDnsOverHttps && !useDnsOverTls
+                                enabled = !useDnsOverHttps && !useDnsOverTls && !useDnsOverQuic
                             )
                             Text(text = "Use TCP")
                         }
@@ -677,6 +808,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                 modifier = Modifier.fillMaxWidth()
             )
             }
+        } // End of scrollable Column
 
         Spacer(modifier = Modifier.height(16.dp))
         Row(
@@ -804,9 +936,14 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                                     dnsQueryType,
                                     useDnsOverHttps,
                                     useDnsOverTls,
+                                    useDnsOverQuic,
                                     selectedResolver,
                                     useRecursion,
-                                    useTcp4Dns
+                                    useTcp4Dns,
+                                    forceHttp3,
+                                    useCustomResolver,
+                                    customResolverHost,
+                                    customResolverPort.toIntOrNull() ?: 53
                                 )
                             }
                             "Ping" -> viewModel.sendPingRequest(ipAddress)
@@ -845,6 +982,11 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             selectedResolver = "Google DNS (8.8.8.8)"
                             useDnsOverHttps = false
                             useDnsOverTls = false
+                            useDnsOverQuic = false
+                            forceHttp3 = false
+                            useCustomResolver = false
+                            customResolverHost = ""
+                            customResolverPort = "53"
                             useRecursion = true
                             useTcp4Dns = false
                         }
@@ -897,7 +1039,8 @@ fun ClientScreen(modifier: Modifier = Modifier) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
+                .weight(1f) // Gives half/remaining space to output box on large screens
+                .heightIn(min = 200.dp) // Ensures it always has minimum height to scroll
         ) {
             LazyColumn(
                 modifier = Modifier

@@ -1,5 +1,5 @@
 [versions]
-agp = "8.13.2"
+agp = "9.1.1"
 androidxMaterial3 = "1.4.0"
 dnsjavaDnsjava = "3.6.3"
 jsonJson = "20250517"
@@ -19,6 +19,8 @@ navigationCompose = "2.9.6"
 commonsNet = "3.12.0"
 sshj = "0.40.0"
 slf4j = "2.0.17"
+cronet = "18.1.1"
+kwik = "0.10.8"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -44,6 +46,8 @@ androidx-navigation-compose = { group = "androidx.navigation", name = "navigatio
 commons-net = { module = "commons-net:commons-net", version.ref = "commonsNet" }
 sshj = { module = "com.hierynomus:sshj", version.ref = "sshj" }
 slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
+play-services-cronet = { group = "com.google.android.gms", name = "play-services-cronet", version.ref = "cronet" }
+kwik = { module = "tech.kwik:kwik", version.ref = "kwik" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

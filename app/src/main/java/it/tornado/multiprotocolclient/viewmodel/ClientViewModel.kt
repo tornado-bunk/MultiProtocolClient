@@ -1,9 +1,11 @@
 package it.tornado.multiprotocolclient.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import it.tornado.multiprotocolclient.protocol.custom.CustomHandler
 import it.tornado.multiprotocolclient.protocol.custom.CustomRequest
+import it.tornado.multiprotocolclient.protocol.dns.CronetHelper
 import it.tornado.multiprotocolclient.protocol.dns.DnsHandler
 import it.tornado.multiprotocolclient.protocol.dns.DnsRequest
 import it.tornado.multiprotocolclient.protocol.http.HttpHandler
@@ -20,7 +22,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class ClientViewModel : ViewModel() {
+class ClientViewModel(application: Application) : AndroidViewModel(application) {
     private val _response = MutableStateFlow<List<String>>(emptyList())
     val response: StateFlow<List<String>> = _response.asStateFlow()
 
@@ -33,6 +35,11 @@ class ClientViewModel : ViewModel() {
     private val smtpHandler = SmtpHandler()
     private val pop3Handler = Pop3Handler()
     private val imapHandler = ImapHandler()
+
+    init {
+        // Initialize Cronet engine for HTTP/3 support
+        CronetHelper.initialize(application.applicationContext)
+    }
 
     //HTTP Section
     fun sendHttpRequest(
@@ -66,9 +73,14 @@ class ClientViewModel : ViewModel() {
         queryType: String,
         useHttps: Boolean,
         useTls: Boolean,
+        useQuic: Boolean,
         selectedResolver: String,
         useRecursion: Boolean,
-        useTcp4Dns: Boolean
+        useTcp4Dns: Boolean,
+        forceHttp3: Boolean,
+        useCustomResolver: Boolean = false,
+        customResolverHost: String = "",
+        customResolverPort: Int = 53
     ) {
         viewModelScope.launch {
             // Get the actual resolver if DoH is selected
@@ -84,9 +96,14 @@ class ClientViewModel : ViewModel() {
                 queryType = queryType,
                 useHttps = useHttps,
                 useTls = useTls,
+                useQuic = useQuic,
                 selectedResolver = actualResolver,
                 useRecursion = useRecursion,
-                useTcp = useTcp4Dns
+                useTcp = useTcp4Dns,
+                forceHttp3 = forceHttp3,
+                useCustomResolver = useCustomResolver,
+                customResolverHost = customResolverHost,
+                customResolverPort = customResolverPort
             )
 
             try {

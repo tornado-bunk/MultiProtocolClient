@@ -77,4 +77,6 @@ dependencies {
     implementation(libs.commons.net)
     implementation(libs.sshj)
     implementation(libs.slf4j.simple)
+    implementation(libs.play.services.cronet)
+    implementation(libs.kwik)
 }
