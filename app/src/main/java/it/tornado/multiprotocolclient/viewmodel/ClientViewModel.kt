@@ -17,9 +17,13 @@ import it.tornado.multiprotocolclient.protocol.diagnostics.TracerouteHandler
 import it.tornado.multiprotocolclient.protocol.mail.SmtpHandler
 import it.tornado.multiprotocolclient.protocol.mail.Pop3Handler
 import it.tornado.multiprotocolclient.protocol.mail.ImapHandler
+import it.tornado.multiprotocolclient.protocol.ssh.InteractiveSshHandler
+import it.tornado.multiprotocolclient.protocol.telnet.InteractiveTelnetHandler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class ClientViewModel(application: Application) : AndroidViewModel(application) {
@@ -39,6 +43,68 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
     init {
         // Initialize Cronet engine for HTTP/3 support
         CronetHelper.initialize(application.applicationContext)
+    }
+
+    // Interactive Sessions
+    val isInteractiveSessionActive = MutableStateFlow(false)
+    private var interactiveTelnetHandler: InteractiveTelnetHandler? = null
+    private var interactiveSshHandler: InteractiveSshHandler? = null
+
+    private fun appendLines(chunk: String) {
+        val lines = chunk.split("\n").map { it.trimEnd('\r') }.filter { it.isNotEmpty() }
+        if (lines.isNotEmpty()) {
+            _response.update { it + lines }
+        }
+    }
+
+    fun connectTelnet(host: String, port: String) {
+        viewModelScope.launch {
+            _response.value = emptyList() // clear previous logs
+            val p = port.toIntOrNull() ?: 23
+            interactiveTelnetHandler = InteractiveTelnetHandler()
+            isInteractiveSessionActive.value = true
+            interactiveTelnetHandler?.connect(host.trim(), p) { chunk ->
+                appendLines(chunk)
+            }
+            isInteractiveSessionActive.value = false
+            interactiveTelnetHandler = null
+        }
+    }
+
+    fun connectSsh(host: String, port: String, user: String, pass: String) {
+        viewModelScope.launch {
+            _response.value = emptyList() // clear previous logs
+            val p = port.toIntOrNull() ?: 22
+            interactiveSshHandler = InteractiveSshHandler()
+            isInteractiveSessionActive.value = true
+            interactiveSshHandler?.connect(host.trim(), p, user, pass) { chunk ->
+                appendLines(chunk)
+            }
+            isInteractiveSessionActive.value = false
+            interactiveSshHandler = null
+        }
+    }
+
+    fun sendInteractiveCommand(protocol: String, command: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (protocol == "Telnet") {
+                interactiveTelnetHandler?.sendCommand(command) { chunk ->
+                     appendLines(chunk)
+                }
+            } else if (protocol == "SSH") {
+                interactiveSshHandler?.sendCommand(command) { chunk ->
+                     appendLines(chunk)
+                }
+            }
+        }
+    }
+
+    fun disconnectInteractiveSession(protocol: String) {
+        if (protocol == "Telnet") {
+            interactiveTelnetHandler?.disconnect()
+        } else if (protocol == "SSH") {
+            interactiveSshHandler?.disconnect()
+        }
     }
 
     //HTTP Section

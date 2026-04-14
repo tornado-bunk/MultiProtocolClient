@@ -40,6 +40,7 @@
 - Record lookup (A, MX, CNAME, NS, PTR, ANY)
 - DNS over HTTPS
 - DNS over TLS
+- DNS over QUIC
 - DNS query using TCP
 - DNS Recursion
 

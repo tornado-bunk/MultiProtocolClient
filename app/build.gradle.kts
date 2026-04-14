@@ -79,4 +79,5 @@ dependencies {
     implementation(libs.slf4j.simple)
     implementation(libs.play.services.cronet)
     implementation(libs.kwik)
+    implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
 }

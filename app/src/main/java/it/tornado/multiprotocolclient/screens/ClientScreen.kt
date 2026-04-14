@@ -42,6 +42,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val coroutineScope = rememberCoroutineScope()
+    val isInteractiveSessionActive by viewModel.isInteractiveSessionActive.collectAsState()
 
     // Permission launcher for Android 13+ (SDK 33)
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -112,7 +113,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     var seeOnlyStatusCode by remember { mutableStateOf(false) }
     var trustSelfSigned by remember { mutableStateOf(false) }
 
-    val protocols = listOf("HTTP", "DNS", "NTP", "Ping", "Traceroute", "SMTP", "POP3", "IMAP", "Custom")
+    val protocols = listOf("HTTP", "DNS", "NTP", "Ping", "Traceroute", "SMTP", "POP3", "IMAP", "Telnet", "SSH", "Custom")
     var selectedProtocol by remember { mutableStateOf(protocols[0]) }
     var ipAddress by remember { mutableStateOf("") }
     var port by remember { mutableStateOf("") }
@@ -124,6 +125,9 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     var useTcp by remember { mutableStateOf(true) }
     var customMessage by remember { mutableStateOf("Hello from MultiProtocolClient") }
     var useSystemTimezone by remember { mutableStateOf(true) }
+    
+    var sshUsername by remember { mutableStateOf("") }
+    var sshPassword by remember { mutableStateOf("") }
 
     var dnsQueryType by remember { mutableStateOf("A") }
     val dnsTypes = listOf("A", "MX", "CNAME", "NS", "PTR", "ANY")
@@ -201,6 +205,14 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                 useSSL = false
             }
 
+            "Telnet" -> {
+                port = "23"
+            }
+
+            "SSH" -> {
+                port = "22"
+            }
+
             "Custom" -> {
                 useTcp = true
                 customMessage = "Hello from MultiProtocolClient"
@@ -209,6 +221,8 @@ fun ClientScreen(modifier: Modifier = Modifier) {
 
         // Reset response
         viewModel.resetResponse()
+        viewModel.disconnectInteractiveSession("Telnet")
+        viewModel.disconnectInteractiveSession("SSH")
     }
 
     // Main content
@@ -740,6 +754,73 @@ fun ClientScreen(modifier: Modifier = Modifier) {
             )
         }
 
+
+
+        // Show additional fields based on the selected protocol
+        if (selectedProtocol == "Telnet" || selectedProtocol == "SSH") {
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = ipAddress,
+                    onValueChange = { ipAddress = it },
+                    label = { Text("Host") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
+                    modifier = Modifier.weight(1f),
+                    enabled = !isInteractiveSessionActive
+                )
+
+                OutlinedTextField(
+                    value = port,
+                    onValueChange = { port = it },
+                    label = { Text("Port") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.width(120.dp),
+                    enabled = !isInteractiveSessionActive
+                )
+            }
+            
+            if (selectedProtocol == "SSH") {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = sshUsername,
+                        onValueChange = { sshUsername = it },
+                        label = { Text("Username") },
+                        keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
+                        modifier = Modifier.weight(1f),
+                        enabled = !isInteractiveSessionActive
+                    )
+                    OutlinedTextField(
+                        value = sshPassword,
+                        onValueChange = { sshPassword = it },
+                        label = { Text("Password") },
+                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Password),
+                        modifier = Modifier.weight(1f),
+                        enabled = !isInteractiveSessionActive
+                    )
+                }
+            }
+            
+            if (isInteractiveSessionActive) {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = customMessage,
+                    onValueChange = { customMessage = it },
+                    label = { Text("Command") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+
         // Show additional fields based on the selected protocol
         if (selectedProtocol == "Custom") {
             Spacer(modifier = Modifier.height(16.dp))
@@ -811,12 +892,107 @@ fun ClientScreen(modifier: Modifier = Modifier) {
         } // End of scrollable Column
 
         Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(16.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            FilledTonalButton(
+            OutlinedButton(
                 onClick = {
+                    focusManager.clearFocus()
+                    // Reset fields based on the selected protocol
+                    when (selectedProtocol) {
+                        "HTTP" -> {
+                            ipAddress = ""
+                            port = if (useSSL) "443" else "80"
+                            useSSL = true
+                            seeOnlyStatusCode = false
+                            trustSelfSigned = false
+                        }
+
+                        "DNS" -> {
+                            ipAddress = ""
+                            dnsQueryType = "A"
+                            selectedResolver = "Google DNS (8.8.8.8)"
+                            useDnsOverHttps = false
+                            useDnsOverTls = false
+                            useDnsOverQuic = false
+                            forceHttp3 = false
+                            useCustomResolver = false
+                            customResolverHost = ""
+                            customResolverPort = "53"
+                            useRecursion = true
+                            useTcp4Dns = false
+                        }
+
+                        "NTP" -> {
+                            ipAddress = ""
+                            selectedTimezone = ZoneId.systemDefault().id
+                            useSystemTimezone = true
+                        }
+
+                        "Ping", "Traceroute" -> {
+                            ipAddress = ""
+                        }
+
+                        "SMTP" -> {
+                            ipAddress = ""
+                            port = "587"
+                            useSSL = false
+                            useStartTls = true
+                        }
+
+                        "POP3" -> {
+                            ipAddress = ""
+                            port = "110"
+                            useSSL = false
+                        }
+
+                        "IMAP" -> {
+                            ipAddress = ""
+                            port = "143"
+                            useSSL = false
+                        }
+
+                        "Telnet" -> {
+                            port = "23"
+                        }
+
+                        "SSH" -> {
+                            port = "22"
+                        }
+
+                        "Custom" -> {
+                            ipAddress = ""
+                            port = ""
+                            useTcp = true
+                        }
+                    }
+                    viewModel.resetResponse()
+                    viewModel.disconnectInteractiveSession("Telnet")
+                    viewModel.disconnectInteractiveSession("SSH")
+                }
+            ) {
+                Text(text = "Reset")
+            }
+
+            Row(horizontalArrangement = Arrangement.End) {
+                val interactiveMode = selectedProtocol == "Telnet" || selectedProtocol == "SSH"
+                
+                if (interactiveMode && isInteractiveSessionActive) {
+                    FilledTonalButton(
+                        onClick = {
+                            focusManager.clearFocus()
+                            viewModel.disconnectInteractiveSession(selectedProtocol)
+                        }
+                    ) {
+                        Text(text = "Disconnect")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+
+                FilledTonalButton(
+                    onClick = {
                     if (ipAddress.isEmpty()) {
                         coroutineScope.launch {
                             Toast.makeText(context, "Host is required", Toast.LENGTH_SHORT)
@@ -826,6 +1002,50 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                     }
 
                     when (selectedProtocol) {
+                        "Telnet", "SSH" -> {
+                            if (!isInteractiveSessionActive) {
+                                if (ipAddress.isEmpty()) {
+                                    coroutineScope.launch {
+                                        Toast.makeText(context, "Host is required", Toast.LENGTH_SHORT).show()
+                                    }
+                                    return@FilledTonalButton
+                                }
+                                if (selectedProtocol == "SSH" && sshUsername.isEmpty()) {
+                                    coroutineScope.launch {
+                                        Toast.makeText(context, "Username is required for SSH", Toast.LENGTH_SHORT).show()
+                                    }
+                                    return@FilledTonalButton
+                                }
+                            } else {
+                                if (customMessage.isEmpty()) {
+                                    return@FilledTonalButton // Do not send empty msg
+                                }
+                            }
+                            // Port validation for connection
+                            if (!isInteractiveSessionActive) {
+                                if (port.isEmpty()) {
+                                    coroutineScope.launch {
+                                        Toast.makeText(context, "Port is required", Toast.LENGTH_SHORT).show()
+                                    }
+                                    return@FilledTonalButton
+                                }
+                                try {
+                                    val portNumber = port.toInt()
+                                    if (portNumber !in 1..65535) {
+                                        coroutineScope.launch {
+                                            Toast.makeText(context, "Port must be between 1 and 65535", Toast.LENGTH_SHORT).show()
+                                        }
+                                        return@FilledTonalButton
+                                    }
+                                } catch (e: NumberFormatException) {
+                                    coroutineScope.launch {
+                                        Toast.makeText(context, "Invalid port number", Toast.LENGTH_SHORT).show()
+                                    }
+                                    return@FilledTonalButton
+                                }
+                            }
+                        }
+
                         "Custom", "HTTP", "SMTP", "POP3", "IMAP" -> {
                             if (port.isEmpty()) {
                                 coroutineScope.launch {
@@ -913,9 +1133,13 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                     }
 
                     // Wrap the send logic in the permission check
-                    
                     checkAndRequestPermission(ipAddress) {
-                         viewModel.resetResponse()
+                        if (interactiveMode) {
+                            // Don't reset response on sendCommand during active session
+                            if (!isInteractiveSessionActive) viewModel.resetResponse()
+                        } else {
+                            viewModel.resetResponse()
+                        }
                         focusManager.clearFocus()
                         when (selectedProtocol) {
                             "HTTP" -> viewModel.sendHttpRequest(
@@ -946,6 +1170,24 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                                     customResolverPort.toIntOrNull() ?: 53
                                 )
                             }
+                            "Telnet" -> {
+                                if (isInteractiveSessionActive) {
+                                    viewModel.sendInteractiveCommand("Telnet", customMessage)
+                                    customMessage = ""
+                                } else {
+                                    viewModel.connectTelnet(ipAddress, port)
+                                    coroutineScope.launch { Toast.makeText(context, "Connecting...", Toast.LENGTH_SHORT).show() }
+                                }
+                            }
+                            "SSH" -> {
+                                if (isInteractiveSessionActive) {
+                                    viewModel.sendInteractiveCommand("SSH", customMessage)
+                                    customMessage = ""
+                                } else {
+                                    viewModel.connectSsh(ipAddress, port, sshUsername, sshPassword)
+                                    coroutineScope.launch { Toast.makeText(context, "Connecting...", Toast.LENGTH_SHORT).show() }
+                                }
+                            }
                             "Ping" -> viewModel.sendPingRequest(ipAddress)
                             "Traceroute" -> viewModel.sendTracerouteRequest(ipAddress)
                             "SMTP" -> viewModel.sendSmtpRequest(ipAddress, port, useSSL, useStartTls)
@@ -958,82 +1200,14 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                     }
                 }
             ) {
-                Text(text = "Send")
+                Text(text = if (interactiveMode) {
+                    if (isInteractiveSessionActive) "Send Cmd" else "Connect"
+                } else {
+                    "Send"
+                })
             }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            OutlinedButton(
-                onClick = {
-                    focusManager.clearFocus()
-                    // Reset fields based on the selected protocol
-                    when (selectedProtocol) {
-                        "HTTP" -> {
-                            ipAddress = ""
-                            port = if (useSSL) "443" else "80"
-                            useSSL = true
-                            seeOnlyStatusCode = false
-                            trustSelfSigned = false
-                        }
-
-                        "DNS" -> {
-                            ipAddress = ""
-                            dnsQueryType = "A"
-                            selectedResolver = "Google DNS (8.8.8.8)"
-                            useDnsOverHttps = false
-                            useDnsOverTls = false
-                            useDnsOverQuic = false
-                            forceHttp3 = false
-                            useCustomResolver = false
-                            customResolverHost = ""
-                            customResolverPort = "53"
-                            useRecursion = true
-                            useTcp4Dns = false
-                        }
-
-                        "NTP" -> {
-                            ipAddress = ""
-                            selectedTimezone = ZoneId.systemDefault().id
-                            useSystemTimezone = true
-                        }
-
-                        "Ping", "Traceroute" -> {
-                            ipAddress = ""
-                        }
-
-                        "SMTP" -> {
-                            ipAddress = ""
-                            port = "587"
-                            useSSL = false
-                            useStartTls = true
-                        }
-
-                        "POP3" -> {
-                            ipAddress = ""
-                            port = "110"
-                            useSSL = false
-                        }
-
-                        "IMAP" -> {
-                            ipAddress = ""
-                            port = "143"
-                            useSSL = false
-                        }
-
-                        "Custom" -> {
-                            ipAddress = ""
-                            port = ""
-                            useTcp = true
-                        }
-                    }
-                    viewModel.resetResponse()
-                }
-            ) {
-                Text(text = "Reset")
             }
-
         }
-
 
         Spacer(modifier = Modifier.height(16.dp))
         Card(
