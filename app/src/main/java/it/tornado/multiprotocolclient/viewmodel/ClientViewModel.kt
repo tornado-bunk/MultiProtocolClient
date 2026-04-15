@@ -31,6 +31,7 @@ import it.tornado.multiprotocolclient.protocol.tftp.TftpHandler
 import it.tornado.multiprotocolclient.protocol.upnp.UpnpHandler
 import it.tornado.multiprotocolclient.protocol.iperf.Iperf2Handler
 import it.tornado.multiprotocolclient.protocol.iperf.Iperf3Handler
+import it.tornado.multiprotocolclient.protocol.mdns.MdnsBonjourHandler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -61,6 +62,7 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
     private val mqttHandler = MqttHandler()
     private val iperf3Handler = Iperf3Handler()
     private val iperf2Handler = Iperf2Handler()
+    private val mdnsBonjourHandler = MdnsBonjourHandler(application.applicationContext)
 
     init {
         // Register BouncyCastle provider for advanced cryptography (needed for SSH/SFTP x25519)
@@ -404,6 +406,17 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
             val p = port.toIntOrNull() ?: 5001
             val d = duration.toIntOrNull() ?: 10
             iperf2Handler.runIperf2Client(host.trim(), p, d, useUdp).collect { chunk ->
+                _response.value += chunk
+            }
+        }
+    }
+
+    // mDNS/Bonjour Section
+    fun sendMdnsBonjourRequest(serviceType: String, timeoutSeconds: String) {
+        viewModelScope.launch {
+            val timeout = timeoutSeconds.toIntOrNull() ?: 8
+            val type = serviceType.trim().ifEmpty { "_http._tcp." }
+            mdnsBonjourHandler.discoverServices(timeout, type).collect { chunk ->
                 _response.value += chunk
             }
         }

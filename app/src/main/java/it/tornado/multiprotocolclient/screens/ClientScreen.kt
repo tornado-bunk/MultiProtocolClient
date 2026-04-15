@@ -115,7 +115,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
 
     val protocols = listOf(
         "HTTP", "DNS", "NTP", "Ping", "Traceroute", "SMTP", "POP3", "IMAP",
-        "FTP", "TFTP", "SNMP", "MQTT", "iPerf3", "iPerf2", "Telnet", "SSH", "WoL",
+        "FTP", "TFTP", "SNMP", "MQTT", "iPerf3", "iPerf2", "mDNS / Bonjour", "Telnet", "SSH", "WoL",
         "WHOIS", "Discovery", "UPnP", "Custom"
     )
     var selectedProtocol by remember { mutableStateOf(protocols[0]) }
@@ -159,6 +159,8 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     var iperfDuration by remember { mutableStateOf("10") }
     var iperfUseUdp by remember { mutableStateOf(false) }
     var iperfReverse by remember { mutableStateOf(false) }
+    var mdnsServiceType by remember { mutableStateOf("_http._tcp.") }
+    var mdnsTimeout by remember { mutableStateOf("8") }
     var expandedDnsType by remember { mutableStateOf(false) }
     var expandedResolver by remember { mutableStateOf(false) }
     var useRecursion by remember { mutableStateOf(true) }
@@ -238,6 +240,11 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                 iperfDuration = "10"
                 iperfUseUdp = false
                 iperfReverse = false
+            }
+
+            "mDNS / Bonjour" -> {
+                mdnsServiceType = "_http._tcp."
+                mdnsTimeout = "8"
             }
 
             "Telnet" -> {
@@ -851,6 +858,37 @@ fun ClientScreen(modifier: Modifier = Modifier) {
             }
         }
 
+        if (selectedProtocol == "mDNS / Bonjour") {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Discover local mDNS/Bonjour services by type.")
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = mdnsServiceType,
+                    onValueChange = { mdnsServiceType = it },
+                    label = { Text("Service Type") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedTextField(
+                    value = mdnsTimeout,
+                    onValueChange = { mdnsTimeout = it },
+                    label = { Text("Timeout (s)") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.width(130.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Example service type: _http._tcp.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
 
 
         // Show additional fields based on the selected protocol
@@ -1333,6 +1371,11 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             iperfReverse = false
                         }
 
+                        "mDNS / Bonjour" -> {
+                            mdnsServiceType = "_http._tcp."
+                            mdnsTimeout = "8"
+                        }
+
                         "Telnet" -> {
                             port = "23"
                         }
@@ -1418,6 +1461,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                         selectedProtocol != "WoL" &&
                         selectedProtocol != "Discovery" &&
                         selectedProtocol != "UPnP" &&
+                        selectedProtocol != "mDNS / Bonjour" &&
                         ipAddress.isEmpty()
                     ) {
                         coroutineScope.launch {
@@ -1567,6 +1611,16 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             }
                         }
 
+                        "mDNS / Bonjour" -> {
+                            val timeout = mdnsTimeout.toIntOrNull()
+                            if (timeout == null || timeout <= 0 || timeout > 60) {
+                                coroutineScope.launch {
+                                    Toast.makeText(context, "mDNS timeout must be between 1 and 60 seconds", Toast.LENGTH_SHORT).show()
+                                }
+                                return@FilledTonalButton
+                            }
+                        }
+
                         "Ping", "Traceroute", "FTP", "TFTP", "SNMP", "MQTT" -> {
                             if (ipAddress.isEmpty()) {
                                 coroutineScope.launch {
@@ -1667,6 +1721,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             "MQTT" -> viewModel.sendMqttSubscribeRequest(ipAddress, port, mqttTopic, useSSL, ftpUsername, ftpPassword)
                             "iPerf3" -> viewModel.sendIperf3Request(ipAddress, port, iperfDuration, iperfUseUdp, iperfReverse)
                             "iPerf2" -> viewModel.sendIperf2Request(ipAddress, port, iperfDuration, iperfUseUdp)
+                            "mDNS / Bonjour" -> viewModel.sendMdnsBonjourRequest(mdnsServiceType, mdnsTimeout)
                             "WoL" -> viewModel.sendWolRequest(wolMacAddress, wolBroadcast)
                             "WHOIS" -> viewModel.sendWhoisRequest(ipAddress)
                             "Discovery" -> viewModel.sendDiscoveryRequest()

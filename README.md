@@ -76,6 +76,7 @@
 
 ### 🔍 Discovery & Router Management
 - mDNS / Bonjour / SSDP (Network services & device discovery)
+- Dedicated mDNS / Bonjour service discovery by service type
 - UPnP (IGD External IP and router discovery)
 
 ## 🎨 UI/UX
