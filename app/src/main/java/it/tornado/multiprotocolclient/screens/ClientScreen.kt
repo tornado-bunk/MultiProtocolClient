@@ -113,7 +113,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     var seeOnlyStatusCode by remember { mutableStateOf(false) }
     var trustSelfSigned by remember { mutableStateOf(false) }
 
-    val protocols = listOf("HTTP", "DNS", "NTP", "Ping", "Traceroute", "SMTP", "POP3", "IMAP", "Telnet", "SSH", "WoL", "WHOIS", "Custom")
+    val protocols = listOf("HTTP", "DNS", "NTP", "Ping", "Traceroute", "SMTP", "POP3", "IMAP", "Telnet", "SSH", "WoL", "WHOIS", "Discovery", "Custom")
     var selectedProtocol by remember { mutableStateOf(protocols[0]) }
     var ipAddress by remember { mutableStateOf("") }
     var port by remember { mutableStateOf("") }
@@ -856,6 +856,12 @@ fun ClientScreen(modifier: Modifier = Modifier) {
             )
         }
 
+        // Discovery fields
+        if (selectedProtocol == "Discovery") {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("This will scan the local network using mDNS (Bonjour) and SSDP (UPnP) to find devices and services. It might take up to 10 seconds.")
+        }
+
         // Show additional fields based on the selected protocol
         if (selectedProtocol == "Custom") {
             Spacer(modifier = Modifier.height(16.dp))
@@ -1006,6 +1012,10 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             ipAddress = ""
                         }
 
+                        "Discovery" -> {
+                            // nothing to reset
+                        }
+
                         "Custom" -> {
                             ipAddress = ""
                             port = ""
@@ -1037,7 +1047,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
 
                 FilledTonalButton(
                     onClick = {
-                    if (selectedProtocol != "WoL" && ipAddress.isEmpty()) {
+                    if (selectedProtocol != "WoL" && selectedProtocol != "Discovery" && ipAddress.isEmpty()) {
                         coroutineScope.launch {
                             Toast.makeText(context, "Host is required", Toast.LENGTH_SHORT)
                                 .show()
@@ -1190,6 +1200,9 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                                 return@FilledTonalButton
                             }
                         }
+                        "Discovery" -> {
+                            // No validation required for Discovery
+                        }
                     }
 
                     // Wrap the send logic in the permission check
@@ -1255,6 +1268,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             "IMAP" -> viewModel.sendImapRequest(ipAddress, port, useSSL)
                             "WoL" -> viewModel.sendWolRequest(wolMacAddress, wolBroadcast)
                             "WHOIS" -> viewModel.sendWhoisRequest(ipAddress)
+                            "Discovery" -> viewModel.sendDiscoveryRequest()
                         }
                         coroutineScope.launch {
                             Toast.makeText(context, "Request Sent", Toast.LENGTH_SHORT).show()

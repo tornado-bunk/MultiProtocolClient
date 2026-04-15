@@ -21,6 +21,7 @@ import it.tornado.multiprotocolclient.protocol.ssh.InteractiveSshHandler
 import it.tornado.multiprotocolclient.protocol.telnet.InteractiveTelnetHandler
 import it.tornado.multiprotocolclient.protocol.wol.WolHandler
 import it.tornado.multiprotocolclient.protocol.whois.WhoisHandler
+import it.tornado.multiprotocolclient.protocol.discovery.DiscoveryHandler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -43,6 +44,7 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
     private val imapHandler = ImapHandler()
     private val wolHandler = WolHandler()
     private val whoisHandler = WhoisHandler()
+    private val discoveryHandler = DiscoveryHandler(application.applicationContext)
 
     init {
         // Initialize Cronet engine for HTTP/3 support
@@ -295,6 +297,15 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
     fun sendWhoisRequest(domain: String) {
         viewModelScope.launch {
             whoisHandler.queryWhois(domain).collect { chunk ->
+                _response.value += chunk
+            }
+        }
+    }
+
+    // Discovery Section
+    fun sendDiscoveryRequest(timeoutSeconds: Int = 10) {
+        viewModelScope.launch {
+            discoveryHandler.scanNetwork(timeoutSeconds).collect { chunk ->
                 _response.value += chunk
             }
         }
