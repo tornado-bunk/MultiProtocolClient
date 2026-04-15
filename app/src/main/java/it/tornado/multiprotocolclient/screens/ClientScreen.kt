@@ -115,7 +115,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
 
     val protocols = listOf(
         "HTTP", "DNS", "NTP", "Ping", "Traceroute", "SMTP", "POP3", "IMAP",
-        "FTP", "TFTP", "SNMP", "MQTT", "iPerf3", "Telnet", "SSH", "WoL",
+        "FTP", "TFTP", "SNMP", "MQTT", "iPerf3", "iPerf2", "Telnet", "SSH", "WoL",
         "WHOIS", "Discovery", "UPnP", "Custom"
     )
     var selectedProtocol by remember { mutableStateOf(protocols[0]) }
@@ -228,6 +228,13 @@ fun ClientScreen(modifier: Modifier = Modifier) {
 
             "iPerf3" -> {
                 port = "5201"
+                iperfDuration = "10"
+                iperfUseUdp = false
+                iperfReverse = false
+            }
+
+            "iPerf2" -> {
+                port = "5001"
                 iperfDuration = "10"
                 iperfUseUdp = false
                 iperfReverse = false
@@ -782,7 +789,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
             )
         }
 
-        if (selectedProtocol == "iPerf3") {
+        if (selectedProtocol == "iPerf3" || selectedProtocol == "iPerf2") {
             Spacer(modifier = Modifier.height(16.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -830,15 +837,17 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                 Text("Use UDP")
             }
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.clickable { iperfReverse = !iperfReverse }
-            ) {
-                Checkbox(
-                    checked = iperfReverse,
-                    onCheckedChange = { iperfReverse = it }
-                )
-                Text("Reverse mode (-R)")
+            if (selectedProtocol == "iPerf3") {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clickable { iperfReverse = !iperfReverse }
+                ) {
+                    Checkbox(
+                        checked = iperfReverse,
+                        onCheckedChange = { iperfReverse = it }
+                    )
+                    Text("Reverse mode (-R)")
+                }
             }
         }
 
@@ -1316,6 +1325,14 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             iperfReverse = false
                         }
 
+                        "iPerf2" -> {
+                            ipAddress = ""
+                            port = "5001"
+                            iperfDuration = "10"
+                            iperfUseUdp = false
+                            iperfReverse = false
+                        }
+
                         "Telnet" -> {
                             port = "23"
                         }
@@ -1527,7 +1544,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             }
                         }
 
-                        "iPerf3" -> {
+                        "iPerf3", "iPerf2" -> {
                             if (ipAddress.isEmpty()) {
                                 coroutineScope.launch {
                                     Toast.makeText(context, "Server host is required", Toast.LENGTH_SHORT).show()
@@ -1649,6 +1666,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             "SNMP" -> viewModel.sendSnmpRequest(ipAddress, port, snmpCommunity, snmpOid)
                             "MQTT" -> viewModel.sendMqttSubscribeRequest(ipAddress, port, mqttTopic, useSSL, ftpUsername, ftpPassword)
                             "iPerf3" -> viewModel.sendIperf3Request(ipAddress, port, iperfDuration, iperfUseUdp, iperfReverse)
+                            "iPerf2" -> viewModel.sendIperf2Request(ipAddress, port, iperfDuration, iperfUseUdp)
                             "WoL" -> viewModel.sendWolRequest(wolMacAddress, wolBroadcast)
                             "WHOIS" -> viewModel.sendWhoisRequest(ipAddress)
                             "Discovery" -> viewModel.sendDiscoveryRequest()

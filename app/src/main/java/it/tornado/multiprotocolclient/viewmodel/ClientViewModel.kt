@@ -29,6 +29,7 @@ import it.tornado.multiprotocolclient.protocol.snmp.SnmpHandler
 import it.tornado.multiprotocolclient.protocol.mqtt.MqttHandler
 import it.tornado.multiprotocolclient.protocol.tftp.TftpHandler
 import it.tornado.multiprotocolclient.protocol.upnp.UpnpHandler
+import it.tornado.multiprotocolclient.protocol.iperf.Iperf2Handler
 import it.tornado.multiprotocolclient.protocol.iperf.Iperf3Handler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -59,6 +60,7 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
     private val snmpHandler = SnmpHandler()
     private val mqttHandler = MqttHandler()
     private val iperf3Handler = Iperf3Handler()
+    private val iperf2Handler = Iperf2Handler()
 
     init {
         // Register BouncyCastle provider for advanced cryptography (needed for SSH/SFTP x25519)
@@ -391,6 +393,17 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
             val p = port.toIntOrNull() ?: 5201
             val d = duration.toIntOrNull() ?: 10
             iperf3Handler.runIperf3Client(host.trim(), p, d, useUdp, reverse).collect { chunk ->
+                _response.value += chunk
+            }
+        }
+    }
+
+    // iPerf2 Section
+    fun sendIperf2Request(host: String, port: String, duration: String, useUdp: Boolean) {
+        viewModelScope.launch {
+            val p = port.toIntOrNull() ?: 5001
+            val d = duration.toIntOrNull() ?: 10
+            iperf2Handler.runIperf2Client(host.trim(), p, d, useUdp).collect { chunk ->
                 _response.value += chunk
             }
         }

@@ -67,6 +67,7 @@
 
 ### Performance Testing
 - iPerf3 client (TCP/UDP and reverse mode)
+- iPerf2 client (TCP/UDP)
 
 ### 📁 File Transfer
 - FTP (Active/Passive)
