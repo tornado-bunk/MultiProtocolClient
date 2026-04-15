@@ -113,7 +113,11 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     var seeOnlyStatusCode by remember { mutableStateOf(false) }
     var trustSelfSigned by remember { mutableStateOf(false) }
 
-    val protocols = listOf("HTTP", "DNS", "NTP", "Ping", "Traceroute", "SMTP", "POP3", "IMAP", "FTP", "TFTP", "SNMP", "MQTT", "Telnet", "SSH", "WoL", "WHOIS", "Discovery", "UPnP", "Custom")
+    val protocols = listOf(
+        "HTTP", "DNS", "NTP", "Ping", "Traceroute", "SMTP", "POP3", "IMAP",
+        "FTP", "TFTP", "SNMP", "MQTT", "iPerf3", "Telnet", "SSH", "WoL",
+        "WHOIS", "Discovery", "UPnP", "Custom"
+    )
     var selectedProtocol by remember { mutableStateOf(protocols[0]) }
     var ipAddress by remember { mutableStateOf("") }
     var port by remember { mutableStateOf("") }
@@ -152,6 +156,9 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     var snmpOid by remember { mutableStateOf("1.3.6.1.2.1.1.1.0") }
     
     var mqttTopic by remember { mutableStateOf("#") }
+    var iperfDuration by remember { mutableStateOf("10") }
+    var iperfUseUdp by remember { mutableStateOf(false) }
+    var iperfReverse by remember { mutableStateOf(false) }
     var expandedDnsType by remember { mutableStateOf(false) }
     var expandedResolver by remember { mutableStateOf(false) }
     var useRecursion by remember { mutableStateOf(true) }
@@ -217,6 +224,13 @@ fun ClientScreen(modifier: Modifier = Modifier) {
             "IMAP" -> {
                 port = "143"
                 useSSL = false
+            }
+
+            "iPerf3" -> {
+                port = "5201"
+                iperfDuration = "10"
+                iperfUseUdp = false
+                iperfReverse = false
             }
 
             "Telnet" -> {
@@ -768,6 +782,66 @@ fun ClientScreen(modifier: Modifier = Modifier) {
             )
         }
 
+        if (selectedProtocol == "iPerf3") {
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = ipAddress,
+                    onValueChange = { ipAddress = it },
+                    label = { Text("Server Host") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedTextField(
+                    value = port,
+                    onValueChange = { port = it },
+                    label = { Text("Port") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.width(120.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = iperfDuration,
+                    onValueChange = { iperfDuration = it },
+                    label = { Text("Duration (s)") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.width(140.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { iperfUseUdp = !iperfUseUdp }
+            ) {
+                Checkbox(
+                    checked = iperfUseUdp,
+                    onCheckedChange = { iperfUseUdp = it }
+                )
+                Text("Use UDP")
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { iperfReverse = !iperfReverse }
+            ) {
+                Checkbox(
+                    checked = iperfReverse,
+                    onCheckedChange = { iperfReverse = it }
+                )
+                Text("Reverse mode (-R)")
+            }
+        }
+
 
 
         // Show additional fields based on the selected protocol
@@ -1234,6 +1308,14 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             useSSL = false
                         }
 
+                        "iPerf3" -> {
+                            ipAddress = ""
+                            port = "5201"
+                            iperfDuration = "10"
+                            iperfUseUdp = false
+                            iperfReverse = false
+                        }
+
                         "Telnet" -> {
                             port = "23"
                         }
@@ -1315,7 +1397,12 @@ fun ClientScreen(modifier: Modifier = Modifier) {
 
                 FilledTonalButton(
                     onClick = {
-                    if (selectedProtocol != "WoL" && selectedProtocol != "Discovery" && selectedProtocol != "UPnP" && ipAddress.isEmpty()) {
+                    if (
+                        selectedProtocol != "WoL" &&
+                        selectedProtocol != "Discovery" &&
+                        selectedProtocol != "UPnP" &&
+                        ipAddress.isEmpty()
+                    ) {
                         coroutineScope.launch {
                             Toast.makeText(context, "Host is required", Toast.LENGTH_SHORT)
                                 .show()
@@ -1440,6 +1527,29 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             }
                         }
 
+                        "iPerf3" -> {
+                            if (ipAddress.isEmpty()) {
+                                coroutineScope.launch {
+                                    Toast.makeText(context, "Server host is required", Toast.LENGTH_SHORT).show()
+                                }
+                                return@FilledTonalButton
+                            }
+                            val portNumber = port.toIntOrNull()
+                            val duration = iperfDuration.toIntOrNull()
+                            if (portNumber == null || portNumber !in 1..65535) {
+                                coroutineScope.launch {
+                                    Toast.makeText(context, "Port must be between 1 and 65535", Toast.LENGTH_SHORT).show()
+                                }
+                                return@FilledTonalButton
+                            }
+                            if (duration == null || duration <= 0) {
+                                coroutineScope.launch {
+                                    Toast.makeText(context, "Duration must be greater than zero", Toast.LENGTH_SHORT).show()
+                                }
+                                return@FilledTonalButton
+                            }
+                        }
+
                         "Ping", "Traceroute", "FTP", "TFTP", "SNMP", "MQTT" -> {
                             if (ipAddress.isEmpty()) {
                                 coroutineScope.launch {
@@ -1538,6 +1648,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             "TFTP" -> viewModel.sendTftpRequest(ipAddress, port, tftpFilename)
                             "SNMP" -> viewModel.sendSnmpRequest(ipAddress, port, snmpCommunity, snmpOid)
                             "MQTT" -> viewModel.sendMqttSubscribeRequest(ipAddress, port, mqttTopic, useSSL, ftpUsername, ftpPassword)
+                            "iPerf3" -> viewModel.sendIperf3Request(ipAddress, port, iperfDuration, iperfUseUdp, iperfReverse)
                             "WoL" -> viewModel.sendWolRequest(wolMacAddress, wolBroadcast)
                             "WHOIS" -> viewModel.sendWhoisRequest(ipAddress)
                             "Discovery" -> viewModel.sendDiscoveryRequest()

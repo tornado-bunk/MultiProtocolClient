@@ -65,6 +65,9 @@
 - SNMP (Simple Network Management Protocol v2c)
 - MQTT (Message Queuing Telemetry Transport with SSL/TLS support)
 
+### Performance Testing
+- iPerf3 client (TCP/UDP and reverse mode)
+
 ### 📁 File Transfer
 - FTP (Active/Passive)
 - SFTP (Secure File Transfer)
