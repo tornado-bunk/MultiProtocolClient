@@ -113,7 +113,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     var seeOnlyStatusCode by remember { mutableStateOf(false) }
     var trustSelfSigned by remember { mutableStateOf(false) }
 
-    val protocols = listOf("HTTP", "DNS", "NTP", "Ping", "Traceroute", "SMTP", "POP3", "IMAP", "FTP", "Telnet", "SSH", "WoL", "WHOIS", "Discovery", "Custom")
+    val protocols = listOf("HTTP", "DNS", "NTP", "Ping", "Traceroute", "SMTP", "POP3", "IMAP", "FTP", "TFTP", "Telnet", "SSH", "WoL", "WHOIS", "Discovery", "Custom")
     var selectedProtocol by remember { mutableStateOf(protocols[0]) }
     var ipAddress by remember { mutableStateOf("") }
     var port by remember { mutableStateOf("") }
@@ -145,6 +145,8 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     var ftpUsername by remember { mutableStateOf("anonymous") }
     var ftpPassword by remember { mutableStateOf("") }
     var useSftp by remember { mutableStateOf(false) }
+    
+    var tftpFilename by remember { mutableStateOf("") }
     var expandedDnsType by remember { mutableStateOf(false) }
     var expandedResolver by remember { mutableStateOf(false) }
     var useRecursion by remember { mutableStateOf(true) }
@@ -929,6 +931,46 @@ fun ClientScreen(modifier: Modifier = Modifier) {
             }
         }
 
+        // TFTP fields
+        if (selectedProtocol == "TFTP") {
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = ipAddress,
+                    onValueChange = { ipAddress = it },
+                    label = { Text("Host") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
+                    modifier = Modifier.weight(1f)
+                )
+
+                OutlinedTextField(
+                    value = port,
+                    onValueChange = { port = it },
+                    label = { Text("Port (69)") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.width(120.dp)
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = tftpFilename,
+                onValueChange = { tftpFilename = it },
+                label = { Text("Filename (leave empty for 'startup-config')") },
+                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                "Note: TFTP does not support listing directories. You must know the exact filename.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
         // Show additional fields based on the selected protocol
         if (selectedProtocol == "Custom") {
             Spacer(modifier = Modifier.height(16.dp))
@@ -1084,6 +1126,12 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             port = if (useSftp) "22" else "21"
                             ftpUsername = "anonymous"
                             ftpPassword = ""
+                        }
+
+                        "TFTP" -> {
+                            ipAddress = ""
+                            port = "69"
+                            tftpFilename = ""
                         }
 
                         "Discovery" -> {
@@ -1246,7 +1294,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             }
                         }
 
-                        "Ping", "Traceroute", "FTP" -> {
+                        "Ping", "Traceroute", "FTP", "TFTP" -> {
                             if (ipAddress.isEmpty()) {
                                 coroutineScope.launch {
                                     Toast.makeText(
@@ -1341,6 +1389,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             "POP3" -> viewModel.sendPop3Request(ipAddress, port, useSSL)
                             "IMAP" -> viewModel.sendImapRequest(ipAddress, port, useSSL)
                             "FTP" -> viewModel.sendFtpRequest(ipAddress, port, ftpUsername, ftpPassword, useSftp)
+                            "TFTP" -> viewModel.sendTftpRequest(ipAddress, port, tftpFilename)
                             "WoL" -> viewModel.sendWolRequest(wolMacAddress, wolBroadcast)
                             "WHOIS" -> viewModel.sendWhoisRequest(ipAddress)
                             "Discovery" -> viewModel.sendDiscoveryRequest()

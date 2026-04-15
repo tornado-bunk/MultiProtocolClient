@@ -23,6 +23,7 @@ import it.tornado.multiprotocolclient.protocol.wol.WolHandler
 import it.tornado.multiprotocolclient.protocol.whois.WhoisHandler
 import it.tornado.multiprotocolclient.protocol.discovery.DiscoveryHandler
 import it.tornado.multiprotocolclient.protocol.ftp.FtpHandler
+import it.tornado.multiprotocolclient.protocol.tftp.TftpHandler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,6 +48,7 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
     private val whoisHandler = WhoisHandler()
     private val discoveryHandler = DiscoveryHandler(application.applicationContext)
     private val ftpHandler = FtpHandler()
+    private val tftpHandler = TftpHandler()
 
     init {
         // Initialize Cronet engine for HTTP/3 support
@@ -325,6 +327,17 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
                 ftpHandler.listFilesFtp(host, p, user, pass).collect { chunk ->
                     _response.value += chunk
                 }
+            }
+        }
+    }
+
+    // TFTP Section
+    fun sendTftpRequest(host: String, port: String, filename: String) {
+        viewModelScope.launch {
+            val p = port.toIntOrNull() ?: 69
+            val requestedFile = if (filename.isEmpty()) "startup-config" else filename
+            tftpHandler.downloadFile(host, p, requestedFile).collect { chunk ->
+                _response.value += chunk
             }
         }
     }
