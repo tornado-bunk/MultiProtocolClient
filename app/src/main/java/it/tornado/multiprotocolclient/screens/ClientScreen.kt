@@ -113,7 +113,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     var seeOnlyStatusCode by remember { mutableStateOf(false) }
     var trustSelfSigned by remember { mutableStateOf(false) }
 
-    val protocols = listOf("HTTP", "DNS", "NTP", "Ping", "Traceroute", "SMTP", "POP3", "IMAP", "FTP", "TFTP", "Telnet", "SSH", "WoL", "WHOIS", "Discovery", "UPnP", "Custom")
+    val protocols = listOf("HTTP", "DNS", "NTP", "Ping", "Traceroute", "SMTP", "POP3", "IMAP", "FTP", "TFTP", "SNMP", "MQTT", "Telnet", "SSH", "WoL", "WHOIS", "Discovery", "UPnP", "Custom")
     var selectedProtocol by remember { mutableStateOf(protocols[0]) }
     var ipAddress by remember { mutableStateOf("") }
     var port by remember { mutableStateOf("") }
@@ -147,6 +147,11 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     var useSftp by remember { mutableStateOf(false) }
     
     var tftpFilename by remember { mutableStateOf("") }
+    
+    var snmpCommunity by remember { mutableStateOf("public") }
+    var snmpOid by remember { mutableStateOf("1.3.6.1.2.1.1.1.0") }
+    
+    var mqttTopic by remember { mutableStateOf("#") }
     var expandedDnsType by remember { mutableStateOf(false) }
     var expandedResolver by remember { mutableStateOf(false) }
     var useRecursion by remember { mutableStateOf(true) }
@@ -971,6 +976,125 @@ fun ClientScreen(modifier: Modifier = Modifier) {
             )
         }
 
+        // SNMP fields
+        if (selectedProtocol == "SNMP") {
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = ipAddress,
+                    onValueChange = { ipAddress = it },
+                    label = { Text("Host") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
+                    modifier = Modifier.weight(1f)
+                )
+
+                OutlinedTextField(
+                    value = port,
+                    onValueChange = { port = it },
+                    label = { Text("Port (161)") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.width(120.dp)
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = snmpCommunity,
+                    onValueChange = { snmpCommunity = it },
+                    label = { Text("Community") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
+                    modifier = Modifier.weight(1f)
+                )
+
+                OutlinedTextField(
+                    value = snmpOid,
+                    onValueChange = { snmpOid = it },
+                    label = { Text("OID") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
+                    modifier = Modifier.weight(1.5f)
+                )
+            }
+        }
+
+        // MQTT fields
+        if (selectedProtocol == "MQTT") {
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = ipAddress,
+                    onValueChange = { ipAddress = it },
+                    label = { Text("Broker Host") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
+                    modifier = Modifier.weight(1f)
+                )
+
+                OutlinedTextField(
+                    value = port,
+                    onValueChange = { port = it },
+                    label = { Text(if (useSSL) "Port (8883)" else "Port (1883)") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.width(120.dp)
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = mqttTopic,
+                onValueChange = { mqttTopic = it },
+                label = { Text("Topic to Subscribe (e.g., # or sensors/temp)") },
+                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
+                modifier = Modifier.fillMaxWidth()
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = ftpUsername,
+                    onValueChange = { ftpUsername = it },
+                    label = { Text("Username (Optional)") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
+                    modifier = Modifier.weight(1f)
+                )
+
+                OutlinedTextField(
+                    value = ftpPassword,
+                    onValueChange = { ftpPassword = it },
+                    label = { Text("Password (Optional)") },
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Password),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { useSSL = !useSSL }
+            ) {
+                Checkbox(
+                    checked = useSSL,
+                    onCheckedChange = { useSSL = it }
+                )
+                Text(
+                    text = "Use SSL/TLS",
+                    modifier = Modifier.padding(start = 4.dp)
+                )
+            }
+        }
+
         // UPnP fields
         if (selectedProtocol == "UPnP") {
             Spacer(modifier = Modifier.height(16.dp))
@@ -1140,6 +1264,22 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             tftpFilename = ""
                         }
 
+                        "SNMP" -> {
+                            ipAddress = ""
+                            port = "161"
+                            snmpCommunity = "public"
+                            snmpOid = "1.3.6.1.2.1.1.1.0"
+                        }
+
+                        "MQTT" -> {
+                            ipAddress = ""
+                            port = if (useSSL) "8883" else "1883"
+                            mqttTopic = "#"
+                            ftpUsername = ""
+                            ftpPassword = ""
+                            useSSL = false
+                        }
+
                         "Discovery", "UPnP" -> {
                             // nothing to reset
                         }
@@ -1300,7 +1440,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             }
                         }
 
-                        "Ping", "Traceroute", "FTP", "TFTP" -> {
+                        "Ping", "Traceroute", "FTP", "TFTP", "SNMP", "MQTT" -> {
                             if (ipAddress.isEmpty()) {
                                 coroutineScope.launch {
                                     Toast.makeText(
@@ -1396,6 +1536,8 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             "IMAP" -> viewModel.sendImapRequest(ipAddress, port, useSSL)
                             "FTP" -> viewModel.sendFtpRequest(ipAddress, port, ftpUsername, ftpPassword, useSftp)
                             "TFTP" -> viewModel.sendTftpRequest(ipAddress, port, tftpFilename)
+                            "SNMP" -> viewModel.sendSnmpRequest(ipAddress, port, snmpCommunity, snmpOid)
+                            "MQTT" -> viewModel.sendMqttSubscribeRequest(ipAddress, port, mqttTopic, useSSL, ftpUsername, ftpPassword)
                             "WoL" -> viewModel.sendWolRequest(wolMacAddress, wolBroadcast)
                             "WHOIS" -> viewModel.sendWhoisRequest(ipAddress)
                             "Discovery" -> viewModel.sendDiscoveryRequest()

@@ -22,6 +22,8 @@ sshj = "0.40.0"
 slf4j = "2.0.17"
 cronet = "18.1.1"
 kwik = "0.10.8"
+snmp4j = "3.8.2"
+pahoMqtt = "1.2.5"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -50,6 +52,8 @@ sshj = { module = "com.hierynomus:sshj", version.ref = "sshj" }
 slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
 play-services-cronet = { group = "com.google.android.gms", name = "play-services-cronet", version.ref = "cronet" }
 kwik = { module = "tech.kwik:kwik", version.ref = "kwik" }
+snmp4j = { module = "org.snmp4j:snmp4j", version.ref = "snmp4j" }
+paho-mqtt = { module = "org.eclipse.paho:org.eclipse.paho.client.mqttv3", version.ref = "pahoMqtt" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

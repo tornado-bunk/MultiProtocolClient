@@ -76,4 +76,6 @@ dependencies {
     implementation(libs.play.services.cronet)
     implementation(libs.kwik)
     implementation(libs.bcprov.jdk18on)
+    implementation(libs.snmp4j)
+    implementation(libs.paho.mqtt)
 }

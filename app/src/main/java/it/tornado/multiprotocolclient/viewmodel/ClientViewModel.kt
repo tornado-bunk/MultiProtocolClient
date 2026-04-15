@@ -23,6 +23,8 @@ import it.tornado.multiprotocolclient.protocol.wol.WolHandler
 import it.tornado.multiprotocolclient.protocol.whois.WhoisHandler
 import it.tornado.multiprotocolclient.protocol.discovery.DiscoveryHandler
 import it.tornado.multiprotocolclient.protocol.ftp.FtpHandler
+import it.tornado.multiprotocolclient.protocol.snmp.SnmpHandler
+import it.tornado.multiprotocolclient.protocol.mqtt.MqttHandler
 import it.tornado.multiprotocolclient.protocol.tftp.TftpHandler
 import it.tornado.multiprotocolclient.protocol.upnp.UpnpHandler
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,6 +53,8 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
     private val ftpHandler = FtpHandler()
     private val tftpHandler = TftpHandler()
     private val upnpHandler = UpnpHandler()
+    private val snmpHandler = SnmpHandler()
+    private val mqttHandler = MqttHandler()
 
     init {
         // Initialize Cronet engine for HTTP/3 support
@@ -348,6 +352,26 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
     fun sendUpnpRequest() {
         viewModelScope.launch {
             upnpHandler.queryUpnpIgd().collect { chunk ->
+                _response.value += chunk
+            }
+        }
+    }
+
+    // SNMP Section
+    fun sendSnmpRequest(ipAddress: String, port: String, community: String, oid: String) {
+        viewModelScope.launch {
+            val p = port.toIntOrNull() ?: 161
+            snmpHandler.querySnmp(ipAddress, p, community, oid).collect { chunk ->
+                _response.value += chunk
+            }
+        }
+    }
+
+    // MQTT Section
+    fun sendMqttSubscribeRequest(host: String, port: String, topic: String, useSsl: Boolean, username: String, pass: String) {
+        viewModelScope.launch {
+            val p = port.toIntOrNull() ?: if (useSsl) 8883 else 1883
+            mqttHandler.subscribeMqtt(host, p, topic, useSsl, username, pass).collect { chunk ->
                 _response.value += chunk
             }
         }
