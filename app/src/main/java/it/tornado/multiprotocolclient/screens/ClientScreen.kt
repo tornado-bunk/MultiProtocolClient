@@ -113,7 +113,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     var seeOnlyStatusCode by remember { mutableStateOf(false) }
     var trustSelfSigned by remember { mutableStateOf(false) }
 
-    val protocols = listOf("HTTP", "DNS", "NTP", "Ping", "Traceroute", "SMTP", "POP3", "IMAP", "Telnet", "SSH", "WoL", "WHOIS", "Discovery", "Custom")
+    val protocols = listOf("HTTP", "DNS", "NTP", "Ping", "Traceroute", "SMTP", "POP3", "IMAP", "FTP", "Telnet", "SSH", "WoL", "WHOIS", "Discovery", "Custom")
     var selectedProtocol by remember { mutableStateOf(protocols[0]) }
     var ipAddress by remember { mutableStateOf("") }
     var port by remember { mutableStateOf("") }
@@ -141,6 +141,10 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     var useCustomResolver by remember { mutableStateOf(false) }
     var customResolverHost by remember { mutableStateOf("") }
     var customResolverPort by remember { mutableStateOf("53") }
+    
+    var ftpUsername by remember { mutableStateOf("anonymous") }
+    var ftpPassword by remember { mutableStateOf("") }
+    var useSftp by remember { mutableStateOf(false) }
     var expandedDnsType by remember { mutableStateOf(false) }
     var expandedResolver by remember { mutableStateOf(false) }
     var useRecursion by remember { mutableStateOf(true) }
@@ -861,6 +865,69 @@ fun ClientScreen(modifier: Modifier = Modifier) {
             Spacer(modifier = Modifier.height(16.dp))
             Text("This will scan the local network using mDNS (Bonjour) and SSDP (UPnP) to find devices and services. It might take up to 10 seconds.")
         }
+        
+        // FTP fields
+        if (selectedProtocol == "FTP") {
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = ipAddress,
+                    onValueChange = { ipAddress = it },
+                    label = { Text("Host") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
+                    modifier = Modifier.weight(1f)
+                )
+
+                OutlinedTextField(
+                    value = port,
+                    onValueChange = { port = it },
+                    label = { Text(if (useSftp) "Port (22)" else "Port (21)") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.width(120.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = ftpUsername,
+                    onValueChange = { ftpUsername = it },
+                    label = { Text("Username") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
+                    modifier = Modifier.weight(1f)
+                )
+
+                OutlinedTextField(
+                    value = ftpPassword,
+                    onValueChange = { ftpPassword = it },
+                    label = { Text("Password") },
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Password),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { useSftp = !useSftp }
+            ) {
+                Checkbox(
+                    checked = useSftp,
+                    onCheckedChange = { useSftp = it }
+                )
+                Text(
+                    text = "Use SFTP (SSH File Transfer Protocol)",
+                    modifier = Modifier.padding(start = 4.dp)
+                )
+            }
+        }
 
         // Show additional fields based on the selected protocol
         if (selectedProtocol == "Custom") {
@@ -1010,6 +1077,13 @@ fun ClientScreen(modifier: Modifier = Modifier) {
 
                         "WHOIS" -> {
                             ipAddress = ""
+                        }
+
+                        "FTP" -> {
+                            ipAddress = ""
+                            port = if (useSftp) "22" else "21"
+                            ftpUsername = "anonymous"
+                            ftpPassword = ""
                         }
 
                         "Discovery" -> {
@@ -1172,7 +1246,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             }
                         }
 
-                        "Ping", "Traceroute" -> {
+                        "Ping", "Traceroute", "FTP" -> {
                             if (ipAddress.isEmpty()) {
                                 coroutineScope.launch {
                                     Toast.makeText(
@@ -1266,6 +1340,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             "SMTP" -> viewModel.sendSmtpRequest(ipAddress, port, useSSL, useStartTls)
                             "POP3" -> viewModel.sendPop3Request(ipAddress, port, useSSL)
                             "IMAP" -> viewModel.sendImapRequest(ipAddress, port, useSSL)
+                            "FTP" -> viewModel.sendFtpRequest(ipAddress, port, ftpUsername, ftpPassword, useSftp)
                             "WoL" -> viewModel.sendWolRequest(wolMacAddress, wolBroadcast)
                             "WHOIS" -> viewModel.sendWhoisRequest(ipAddress)
                             "Discovery" -> viewModel.sendDiscoveryRequest()

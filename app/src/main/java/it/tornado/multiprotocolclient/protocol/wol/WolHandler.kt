@@ -15,7 +15,7 @@ class WolHandler {
             // Parse and validate MAC address
             val cleanMac = macAddress.replace(Regex("[:\\-.]"), "").uppercase()
             if (cleanMac.length != 12 || !cleanMac.matches(Regex("[0-9A-F]+"))) {
-                emit("❌ Invalid MAC address: $macAddress")
+                emit("Invalid MAC address: $macAddress")
                 emit("Expected format: AA:BB:CC:DD:EE:FF or AA-BB-CC-DD-EE-FF")
                 return@flow
             }
@@ -59,13 +59,13 @@ class WolHandler {
                 socket.send(packet)
             }
 
-            emit("✅ Magic Packet sent successfully!")
+            emit("Magic Packet sent successfully!")
             emit("")
             emit("Note: The target device must have WoL enabled")
             emit("in its BIOS/UEFI and network adapter settings.")
 
         } catch (e: Exception) {
-            emit("❌ Failed to send WoL packet: ${e.message}")
+            emit("❌ailed to send WoL packet: ${e.message}")
         }
     }.flowOn(Dispatchers.IO)
 }

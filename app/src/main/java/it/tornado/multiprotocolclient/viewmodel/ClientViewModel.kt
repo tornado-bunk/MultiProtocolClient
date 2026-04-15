@@ -22,6 +22,7 @@ import it.tornado.multiprotocolclient.protocol.telnet.InteractiveTelnetHandler
 import it.tornado.multiprotocolclient.protocol.wol.WolHandler
 import it.tornado.multiprotocolclient.protocol.whois.WhoisHandler
 import it.tornado.multiprotocolclient.protocol.discovery.DiscoveryHandler
+import it.tornado.multiprotocolclient.protocol.ftp.FtpHandler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,6 +46,7 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
     private val wolHandler = WolHandler()
     private val whoisHandler = WhoisHandler()
     private val discoveryHandler = DiscoveryHandler(application.applicationContext)
+    private val ftpHandler = FtpHandler()
 
     init {
         // Initialize Cronet engine for HTTP/3 support
@@ -307,6 +309,22 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             discoveryHandler.scanNetwork(timeoutSeconds).collect { chunk ->
                 _response.value += chunk
+            }
+        }
+    }
+
+    // FTP Section
+    fun sendFtpRequest(host: String, port: String, user: String, pass: String, useSftp: Boolean) {
+        viewModelScope.launch {
+            val p = port.toIntOrNull() ?: if (useSftp) 22 else 21
+            if (useSftp) {
+                ftpHandler.listFilesSftp(host, p, user, pass).collect { chunk ->
+                    _response.value += chunk
+                }
+            } else {
+                ftpHandler.listFilesFtp(host, p, user, pass).collect { chunk ->
+                    _response.value += chunk
+                }
             }
         }
     }
