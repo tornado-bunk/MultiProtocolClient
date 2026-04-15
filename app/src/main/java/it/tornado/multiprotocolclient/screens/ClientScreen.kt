@@ -113,7 +113,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     var seeOnlyStatusCode by remember { mutableStateOf(false) }
     var trustSelfSigned by remember { mutableStateOf(false) }
 
-    val protocols = listOf("HTTP", "DNS", "NTP", "Ping", "Traceroute", "SMTP", "POP3", "IMAP", "FTP", "TFTP", "Telnet", "SSH", "WoL", "WHOIS", "Discovery", "Custom")
+    val protocols = listOf("HTTP", "DNS", "NTP", "Ping", "Traceroute", "SMTP", "POP3", "IMAP", "FTP", "TFTP", "Telnet", "SSH", "WoL", "WHOIS", "Discovery", "UPnP", "Custom")
     var selectedProtocol by remember { mutableStateOf(protocols[0]) }
     var ipAddress by remember { mutableStateOf("") }
     var port by remember { mutableStateOf("") }
@@ -971,6 +971,12 @@ fun ClientScreen(modifier: Modifier = Modifier) {
             )
         }
 
+        // UPnP fields
+        if (selectedProtocol == "UPnP") {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("This will send a UPnP request to your router (IGD) to discover its external IP address and device details.")
+        }
+
         // Show additional fields based on the selected protocol
         if (selectedProtocol == "Custom") {
             Spacer(modifier = Modifier.height(16.dp))
@@ -1134,7 +1140,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             tftpFilename = ""
                         }
 
-                        "Discovery" -> {
+                        "Discovery", "UPnP" -> {
                             // nothing to reset
                         }
 
@@ -1169,7 +1175,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
 
                 FilledTonalButton(
                     onClick = {
-                    if (selectedProtocol != "WoL" && selectedProtocol != "Discovery" && ipAddress.isEmpty()) {
+                    if (selectedProtocol != "WoL" && selectedProtocol != "Discovery" && selectedProtocol != "UPnP" && ipAddress.isEmpty()) {
                         coroutineScope.launch {
                             Toast.makeText(context, "Host is required", Toast.LENGTH_SHORT)
                                 .show()
@@ -1322,8 +1328,8 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                                 return@FilledTonalButton
                             }
                         }
-                        "Discovery" -> {
-                            // No validation required for Discovery
+                        "Discovery", "UPnP" -> {
+                            // No validation required
                         }
                     }
 
@@ -1393,6 +1399,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             "WoL" -> viewModel.sendWolRequest(wolMacAddress, wolBroadcast)
                             "WHOIS" -> viewModel.sendWhoisRequest(ipAddress)
                             "Discovery" -> viewModel.sendDiscoveryRequest()
+                            "UPnP" -> viewModel.sendUpnpRequest()
                         }
                         coroutineScope.launch {
                             Toast.makeText(context, "Request Sent", Toast.LENGTH_SHORT).show()
