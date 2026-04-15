@@ -13,9 +13,7 @@ class WhoisHandler {
 
     fun queryWhois(domain: String, server: String = "whois.iana.org", port: Int = 43): Flow<String> = flow {
         try {
-            emit("═══════════════════════════════════════")
-            emit("  WHOIS Lookup: $domain")
-            emit("═══════════════════════════════════════")
+            emit("WHOIS Lookup: $domain")
             emit("")
             emit("Querying $server:$port ...")
             emit("")
@@ -27,7 +25,7 @@ class WhoisHandler {
             val referralServer = extractReferralServer(ianaResult)
 
             if (referralServer != null && referralServer != server) {
-                emit("── Referral: $referralServer ──")
+                emit("Referral: $referralServer")
                 emit("")
                 val specificResult = performWhoisQuery(domain, referralServer, 43)
                 specificResult.lines().forEach { line ->
@@ -40,7 +38,7 @@ class WhoisHandler {
             }
 
         } catch (e: Exception) {
-            emit("❌ WHOIS query failed: ${e.message}")
+            emit("WHOIS query failed: ${e.message}")
         }
     }.flowOn(Dispatchers.IO)
 

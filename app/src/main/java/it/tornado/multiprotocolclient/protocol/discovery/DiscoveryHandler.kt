@@ -20,9 +20,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 class DiscoveryHandler(private val context: Context) {
 
     fun scanNetwork(timeoutSeconds: Int = 5): Flow<String> = flow {
-        emit("═══════════════════════════════════════")
-        emit("  Network Discovery (mDNS & SSDP)")
-        emit("═══════════════════════════════════════")
+        emit("Network Discovery (mDNS & SSDP)")
         emit("Scanning local network for devices...")
         emit("Timeout: $timeoutSeconds seconds")
         emit("")

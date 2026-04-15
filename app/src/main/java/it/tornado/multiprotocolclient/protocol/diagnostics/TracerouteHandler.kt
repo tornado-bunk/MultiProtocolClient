@@ -11,13 +11,8 @@ class TracerouteHandler {
     suspend fun executeTraceroute(host: String): List<String> = withContext(Dispatchers.IO) {
         val output = mutableListOf<String>()
         
-        // Try standard traceroute first
-        if (hasTraceroute()) {
-            output.addAll(runCommand("traceroute -w 2 -q 1 $host"))
-        } else {
-             output.add("Standard 'traceroute' not found, falling back to ping-based traceroute...")
-             output.addAll(runPingTraceroute(host))
-        }
+        // Run traceroute command with ping
+        output.addAll(runPingTraceroute(host))
 
         // If output is empty, add a default message
         if (output.isEmpty()) {
@@ -25,45 +20,6 @@ class TracerouteHandler {
         }
         
         output
-    }
-
-    // Check if 'traceroute' command is available
-    private fun hasTraceroute(): Boolean {
-        return try {
-            val process = Runtime.getRuntime().exec("which traceroute")
-            process.waitFor() == 0
-        } catch (e: Exception) {
-            false
-        }
-    }
-
-    // Execute a shell command and return the output as a list of strings
-    private fun runCommand(command: String): List<String> {
-        val output = mutableListOf<String>()
-        try {
-            // Run the command and capture the output
-            val process = Runtime.getRuntime().exec(command)
-            // Read the output
-            val reader = BufferedReader(InputStreamReader(process.inputStream))
-            // Read each line and add it to the output
-            var line: String?
-            while (reader.readLine().also { line = it } != null) {
-                line?.let { output.add(it) }
-            }
-
-            // Wait for the process to complete
-            val exitCode = process.waitFor()
-            if (exitCode != 0) {
-                val errorReader = BufferedReader(InputStreamReader(process.errorStream))
-                while (errorReader.readLine().also { line = it } != null) {
-                    line?.let { output.add("Error: $it") }
-                }
-            }
-
-        } catch (e: Exception) {
-            output.add("Error executing command '$command': ${e.message}")
-        }
-        return output
     }
 
     // Execute traceroute using ping

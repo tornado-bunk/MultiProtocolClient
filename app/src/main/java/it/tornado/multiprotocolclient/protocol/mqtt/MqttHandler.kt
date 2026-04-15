@@ -32,9 +32,7 @@ class MqttHandler {
             val brokerUrl = "$protocol$host:$port"
             val clientId = "MultiProtocolClient-${UUID.randomUUID()}"
             
-            emit("═══════════════════════════════════════")
-            emit("  MQTT Subscribe: $host:$port")
-            emit("═══════════════════════════════════════")
+            emit(" MQTT Subscribe: $host:$port")
             emit("Broker URL: $brokerUrl")
             emit("Client ID: $clientId")
             emit("Connecting...")
@@ -55,7 +53,7 @@ class MqttHandler {
 
             client.setCallback(object : MqttCallback {
                 override fun connectionLost(cause: Throwable?) {
-                    receivedMessages.add("⚠️ Connection lost: ${cause?.message}")
+                    receivedMessages.add("Connection lost: ${cause?.message}")
                 }
 
                 override fun messageArrived(msgTopic: String?, message: MqttMessage?) {
@@ -70,10 +68,10 @@ class MqttHandler {
             })
 
             client.connect(connOpts)
-            emit("✅ Connected. Subscribing to topic: '$topic'...")
+            emit("Connected. Subscribing to topic: '$topic'...")
             
             client.subscribe(topic)
-            emit("✅ Subscribed. Waiting for messages for $timeoutSeconds seconds...")
+            emit("Subscribed. Waiting for messages for $timeoutSeconds seconds...")
             emit("── Messages ──")
 
             val startTime = System.currentTimeMillis()
@@ -93,7 +91,7 @@ class MqttHandler {
             emit("(Timeout reached. Automatically disconnecting.)")
 
         } catch (e: Exception) {
-            emit("❌ MQTT Error: ${e.message}")
+            emit("MQTT Error: ${e.message}")
         } finally {
             try {
                 if (client?.isConnected == true) {
@@ -103,7 +101,6 @@ class MqttHandler {
             } catch (e: Exception) {
                 // Ignore
             }
-            emit("═══════════════════════════════════════")
         }
     }.flowOn(Dispatchers.IO)
 }

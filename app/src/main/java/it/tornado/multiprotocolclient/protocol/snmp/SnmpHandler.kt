@@ -23,9 +23,7 @@ class SnmpHandler {
         var transport: TransportMapping<*>? = null
         var snmp: Snmp? = null
         try {
-            emit("═══════════════════════════════════════")
-            emit("  SNMP Query: $ipAddress:$port")
-            emit("═══════════════════════════════════════")
+            emit("SNMP Query: $ipAddress:$port")
             emit("Connecting with community '$community'...")
 
             transport = DefaultUdpTransportMapping()
@@ -53,19 +51,19 @@ class SnmpHandler {
                 if (responsePdu.errorStatus == PDU.noError) {
                     val variableBinding = responsePdu.variableBindings.firstOrNull()
                     if (variableBinding != null) {
-                        emit("✅ Response from $ipAddress:")
+                        emit("Response from $ipAddress:")
                         emit("${variableBinding.oid} = ${variableBinding.variable}")
                     } else {
-                        emit("✅ Response received, but no variables found.")
+                        emit("Response received, but no variables found.")
                     }
                 } else {
-                    emit("❌ SNMP Error: ${responsePdu.errorStatusText} (Status: ${responsePdu.errorStatus})")
+                    emit("SNMP Error: ${responsePdu.errorStatusText} (Status: ${responsePdu.errorStatus})")
                 }
             } else {
-                emit("❌ No response. Timeout reached.")
+                emit("No response. Timeout reached.")
             }
         } catch (e: Exception) {
-            emit("❌ SNMP Exception: ${e.message}")
+            emit("SNMP Exception: ${e.message}")
         } finally {
             try {
                 snmp?.close()
@@ -73,7 +71,6 @@ class SnmpHandler {
             } catch (e: Exception) {
                 // Ignore
             }
-            emit("═══════════════════════════════════════")
         }
     }.flowOn(Dispatchers.IO)
 }

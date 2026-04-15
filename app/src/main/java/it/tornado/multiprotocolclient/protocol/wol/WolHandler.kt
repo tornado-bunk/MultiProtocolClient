@@ -40,9 +40,7 @@ class WolHandler {
 
             val formattedMac = cleanMac.chunked(2).joinToString(":")
 
-            emit("═══════════════════════════════════════")
-            emit("  Wake-on-LAN Magic Packet")
-            emit("═══════════════════════════════════════")
+            emit("Wake-on-LAN Magic Packet")
             emit("")
             emit("Target MAC:      $formattedMac")
             emit("Broadcast Addr:  $broadcastAddress")
@@ -65,7 +63,7 @@ class WolHandler {
             emit("in its BIOS/UEFI and network adapter settings.")
 
         } catch (e: Exception) {
-            emit("❌ailed to send WoL packet: ${e.message}")
+            emit("Failed to send WoL packet: ${e.message}")
         }
     }.flowOn(Dispatchers.IO)
 }

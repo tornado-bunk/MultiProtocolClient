@@ -1,6 +1,8 @@
 package it.tornado.multiprotocolclient.viewmodel
 
 import android.app.Application
+import java.security.Security
+import org.bouncycastle.jce.provider.BouncyCastleProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import it.tornado.multiprotocolclient.protocol.custom.CustomHandler
@@ -57,6 +59,10 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
     private val mqttHandler = MqttHandler()
 
     init {
+        // Register BouncyCastle provider for advanced cryptography (needed for SSH/SFTP x25519)
+        Security.removeProvider("BC")
+        Security.addProvider(BouncyCastleProvider())
+
         // Initialize Cronet engine for HTTP/3 support
         CronetHelper.initialize(application.applicationContext)
     }

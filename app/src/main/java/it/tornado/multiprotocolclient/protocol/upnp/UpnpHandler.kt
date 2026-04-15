@@ -4,20 +4,20 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.withTimeout
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.HttpURLConnection
 import java.net.InetAddress
+import java.net.SocketTimeoutException
 import java.net.URL
 
 class UpnpHandler {
 
     fun queryUpnpIgd(): Flow<String> = flow {
+        val discoveredLocations = mutableSetOf<String>()
+        
         try {
-            emit("═══════════════════════════════════════")
-            emit("  UPnP Internet Gateway Device Search")
-            emit("═══════════════════════════════════════")
+            emit("UPnP Internet Gateway Device Search")
             emit("1) Sending SSDP M-SEARCH for IGD...")
 
             val ssdpMessage = "M-SEARCH * HTTP/1.1\r\n" +
@@ -27,106 +27,109 @@ class UpnpHandler {
                     "ST: urn:schemas-upnp-org:device:InternetGatewayDevice:1\r\n\r\n"
 
             val socket = DatagramSocket()
-            socket.soTimeout = 3000
+            socket.soTimeout = 3000 
             socket.broadcast = true
 
             val address = InetAddress.getByName("239.255.255.250")
             socket.send(DatagramPacket(ssdpMessage.toByteArray(), ssdpMessage.length, address, 1900))
 
             val receivePacket = DatagramPacket(ByteArray(4096), 4096)
-            var locationUrl = ""
 
             try {
-                socket.receive(receivePacket)
-                val responseLine = String(receivePacket.data, 0, receivePacket.length)
-                val lines = responseLine.lines()
-                for (line in lines) {
-                    if (line.startsWith("LOCATION:", ignoreCase = true)) {
-                        locationUrl = line.substringAfter("LOCATION:").trim()
-                        break
+                while (true) {
+                    socket.receive(receivePacket)
+                    val response = String(receivePacket.data, 0, receivePacket.length)
+                    val location = response.lines()
+                        .find { it.startsWith("LOCATION:", ignoreCase = true) }
+                        ?.substringAfter(":")?.trim()
+
+                    if (location != null && discoveredLocations.add(location)) {
+                        emit("Found Device at: $location")
+                        processIgdDescriptor(location, this)
                     }
                 }
-            } catch (e: Exception) {
-                emit("❌ No UPnP IGD found on network (timeout).")
+            } catch (e: SocketTimeoutException) {
+                if (discoveredLocations.isEmpty()) {
+                    emit("No UPnP IGD found on network.")
+                } else {
+                    emit("Scan finished. Found ${discoveredLocations.size} device(s).")
+                }
+            } finally {
                 socket.close()
-                return@flow
-            }
-            socket.close()
-
-            if (locationUrl.isEmpty()) {
-                emit("❌ Device responded but provided no LOCATION URL.")
-                return@flow
             }
 
-            emit("✅ Found IGD Device descriptor at: $locationUrl")
-            emit("2) Fetching XML descriptor...")
+        } catch (e: Exception) {
+            emit("UPnP Error: ${e.message}")
+        }
+    }.flowOn(Dispatchers.IO)
 
+    private suspend fun processIgdDescriptor(locationUrl: String, flow: kotlinx.coroutines.flow.FlowCollector<String>) {
+        try {
+            flow.emit("2) Fetching XML descriptor from: $locationUrl")
             val url = URL(locationUrl)
             val connection = url.openConnection() as HttpURLConnection
             connection.requestMethod = "GET"
             connection.connectTimeout = 5000
-            connection.readTimeout = 5000
 
             if (connection.responseCode == 200) {
                 val xmlStr = connection.inputStream.bufferedReader().readText()
-                val serverIP = locationUrl.substringBefore(":", "http://127.0.0.1")
                 
-                // Extremely basic parsing to find the friendly name
-                val friendlyNameMatch = Regex("<friendlyName>(.*?)</friendlyName>").find(xmlStr)
-                val routerName = friendlyNameMatch?.groupValues?.get(1) ?: "Unknown Router"
+                val friendlyName = Regex("<friendlyName>(.*?)</friendlyName>").find(xmlStr)?.groupValues?.get(1) ?: "Unknown"
+                flow.emit("Router: $friendlyName")
+
+                val wanIP = "urn:schemas-upnp-org:service:WANIPConnection:1"
+                val wanPPP = "urn:schemas-upnp-org:service:WANPPPConnection:1"
                 
-                emit("✅ Connected to: $routerName")
-                
-                // Extracting Control URL for WANIPConnection
-                val controlUrlMatch = Regex("<serviceType>urn:schemas-upnp-org:service:WANIPConnection:1</serviceType>.*?<controlURL>(.*?)</controlURL>", RegexOption.DOT_MATCHES_ALL).find(xmlStr)
-                val pppControlUrlMatch = Regex("<serviceType>urn:schemas-upnp-org:service:WANPPPConnection:1</serviceType>.*?<controlURL>(.*?)</controlURL>", RegexOption.DOT_MATCHES_ALL).find(xmlStr)
-                
-                var controlPath = controlUrlMatch?.groupValues?.get(1) ?: pppControlUrlMatch?.groupValues?.get(1)
-                
-                if (controlPath == null) {
-                    emit("❌ Could not find WANIPConnection or WANPPPConnection service for Port Mapping.")
-                    return@flow
+                val serviceType: String
+                val controlPath: String?
+
+                val ipMatch = Regex("<serviceType>$wanIP</serviceType>.*?<controlURL>(.*?)</controlURL>", RegexOption.DOT_MATCHES_ALL).find(xmlStr)
+                if (ipMatch != null) {
+                    serviceType = wanIP
+                    controlPath = ipMatch.groupValues[1]
+                } else {
+                    val pppMatch = Regex("<serviceType>$wanPPP</serviceType>.*?<controlURL>(.*?)</controlURL>", RegexOption.DOT_MATCHES_ALL).find(xmlStr)
+                    serviceType = wanPPP
+                    controlPath = pppMatch?.groupValues?.get(1)
                 }
-                
-                val hostBaseUrl = "${url.protocol}://${url.host}:${url.port}"
-                val fullControlUrl = if (controlPath.startsWith("/")) "$hostBaseUrl$controlPath"
-                                       else "$hostBaseUrl/$controlPath"
 
-                emit("3) Found Control URL: $fullControlUrl")
-                emit("4) Sending GetExternalIPAddress SOAP request...")
+                if (controlPath == null) {
+                    flow.emit("No WAN IP/PPP service found on this descriptor.")
+                    return
+                }
 
-                // Send GetExternalIPAddress
-                val soapBody = "<?xml version=\"1.0\"?>\r\n" +
-                        "<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">" +
-                        "<s:Body>" +
-                        "<u:GetExternalIPAddress xmlns:u=\"urn:schemas-upnp-org:service:WANIPConnection:1\"></u:GetExternalIPAddress>" +
-                        "</s:Body>" +
-                        "</s:Envelope>"
+                val port = if (url.port == -1) url.defaultPort else url.port
+                val hostBaseUrl = "${url.protocol}://${url.host}:$port"
+                val fullControlUrl = if (controlPath.startsWith("/")) "$hostBaseUrl$controlPath" else "$hostBaseUrl/$controlPath"
+
+                flow.emit("3) Sending GetExternalIPAddress...")
+
+                val soapBody = """
+                    <?xml version="1.0"?>
+                    <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+                    <s:Body>
+                    <u:GetExternalIPAddress xmlns:u="$serviceType"></u:GetExternalIPAddress>
+                    </s:Body>
+                    </s:Envelope>
+                """.trimIndent()
 
                 val postConn = URL(fullControlUrl).openConnection() as HttpURLConnection
                 postConn.requestMethod = "POST"
                 postConn.doOutput = true
                 postConn.setRequestProperty("Content-Type", "text/xml; charset=\"utf-8\"")
-                postConn.setRequestProperty("SOAPAction", "\"urn:schemas-upnp-org:service:WANIPConnection:1#GetExternalIPAddress\"")
+                postConn.setRequestProperty("SOAPAction", "\"$serviceType#GetExternalIPAddress\"")
                 postConn.outputStream.write(soapBody.toByteArray())
 
                 if (postConn.responseCode == 200) {
                     val respXml = postConn.inputStream.bufferedReader().readText()
-                    val externalIpMatch = Regex("<NewExternalIPAddress>(.*?)</NewExternalIPAddress>").find(respXml)
-                    val extIp = externalIpMatch?.groupValues?.get(1) ?: "Unknown"
-                    emit("✅ External Public IP: $extIp")
+                    val extIp = Regex("<NewExternalIPAddress>(.*?)</NewExternalIPAddress>").find(respXml)?.groupValues?.get(1) ?: "Unknown"
+                    flow.emit("External IP: $extIp")
                 } else {
-                    emit("❌ Failed to get external IP. (Code: ${postConn.responseCode})")
+                    flow.emit("SOAP Failed: HTTP ${postConn.responseCode}")
                 }
-
-                emit("Note: Full port mapping manipulation (AddPortMapping) is available in advanced mode.")
-                
-            } else {
-                emit("❌ Failed to download IGD XML: HTTP ${connection.responseCode}")
             }
-
         } catch (e: Exception) {
-            emit("❌ UPnP Error: ${e.message}")
+            flow.emit("Error processing $locationUrl: ${e.message}")
         }
-    }.flowOn(Dispatchers.IO)
+    }
 }

@@ -12,9 +12,7 @@ class TftpHandler {
     fun downloadFile(host: String, port: Int = 69, filename: String): Flow<String> = flow {
         val tftp = TFTPClient()
         try {
-            emit("═══════════════════════════════════════")
-            emit("  TFTP Download: $host:$port")
-            emit("═══════════════════════════════════════")
+            emit("TFTP Download: $host:$port")
             emit("Requesting file: '$filename'...")
 
             tftp.defaultTimeout = 5000
@@ -24,7 +22,7 @@ class TftpHandler {
             val bytesReceived = tftp.receiveFile(filename, org.apache.commons.net.tftp.TFTP.OCTET_MODE, outputStream, host, port)
             
             if (bytesReceived > 0) {
-                emit("✅ TFTP Download successful!")
+                emit("TFTP Download successful!")
                 emit("Received ${bytesReceived} bytes for '$filename'.")
                 
                 // If it's a text config, let's try to preview the first lines
@@ -35,13 +33,11 @@ class TftpHandler {
                 previewLines.forEach { emit(it) }
                 if (content.lines().size > 20) emit("... (truncated)")
             } else {
-                emit("❌ Received 0 bytes. File might be empty.")
+                emit("Received 0 bytes. File might be empty.")
             }
-            
-            emit("═══════════════════════════════════════")
-            
+                        
         } catch (e: Exception) {
-            emit("❌ TFTP Error: ${e.message}")
+            emit("TFTP Error: ${e.message}")
             if (e.message?.contains("File not found") == true) {
                 emit("(Note: TFTP does not support directory listing. You must provide an exact filename).")
             }

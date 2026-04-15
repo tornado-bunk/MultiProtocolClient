@@ -15,9 +15,7 @@ class FtpHandler {
     fun listFilesFtp(host: String, port: Int = 21, user: String = "anonymous", pass: String = ""): Flow<String> = flow {
         val ftp = FTPClient()
         try {
-            emit("═══════════════════════════════════════")
-            emit("  FTP Connection: $host:$port")
-            emit("═══════════════════════════════════════")
+            emit(" FTP Connection: $host:$port")
             emit("Connecting...")
 
             ftp.connectTimeout = 10000
@@ -26,19 +24,19 @@ class FtpHandler {
             val reply = ftp.replyCode
             if (!FTPReply.isPositiveCompletion(reply)) {
                 ftp.disconnect()
-                emit("❌ FTP server refused connection. Code: $reply")
+                emit("FTP server refused connection. Code: $reply")
                 return@flow
             }
             
-            emit("✅ Connected. Authenticating as '$user'...")
+            emit("Connected. Authenticating as '$user'...")
             val success = ftp.login(user, pass)
             
             if (!success) {
-                emit("❌ Authentication failed.")
+                emit("Authentication failed.")
                 ftp.logout()
                 return@flow
             }
-            emit("✅ Authenticated.")
+            emit("Authenticated.")
             
             ftp.enterLocalPassiveMode()
             
@@ -59,11 +57,10 @@ class FtpHandler {
             }
             
             ftp.logout()
-            emit("═══════════════════════════════════════")
-            emit("Connection closed cleanly.")
+            emit("\nConnection closed cleanly.")
             
         } catch (e: Exception) {
-            emit("❌ FTP Error: ${e.message}")
+            emit("FTP Error: ${e.message}")
         } finally {
             if (ftp.isConnected) {
                 try { ftp.disconnect() } catch (e: Exception) {}
@@ -75,9 +72,7 @@ class FtpHandler {
         var client: SSHClient? = null
         var sftp: SFTPClient? = null
         try {
-            emit("═══════════════════════════════════════")
-            emit("  SFTP Connection: $host:$port")
-            emit("═══════════════════════════════════════")
+            emit("SFTP Connection: $host:$port")
             emit("Connecting...")
 
             client = SSHClient()
@@ -85,10 +80,20 @@ class FtpHandler {
             client.connectTimeout = 10000
             client.connect(host, port)
             
-            emit("✅ Connected. Authenticating as '$user'...")
-            client.authPassword(user, pass)
+            emit("Connected. Authenticating as '$user'...")
             
-            emit("✅ Authenticated. starting SFTP subsystem...")
+            try {
+                client.authPassword(user, pass)
+                emit("Authenticated via password.")
+            } catch (e: Exception) {
+                emit("Password auth failed, trying interactive...")
+                client.authInteractive(user) { _, _, _, prompt, _ ->
+                    prompt.map { pass }
+                }
+                emit("Authenticated via keyboard-interactive.")
+            }
+            
+            emit("Starting SFTP subsystem...")
             sftp = client.newSFTPClient()
             
             val ls = sftp.ls(".")
@@ -107,11 +112,10 @@ class FtpHandler {
                 }
             }
             
-            emit("═══════════════════════════════════════")
-            emit("Connection closed cleanly.")
+            emit("\nConnection closed cleanly.")
             
         } catch (e: Exception) {
-            emit("❌ SFTP Error: ${e.message}")
+            emit("SFTP Error: ${e.message}")
         } finally {
             try { sftp?.close() } catch (e: Exception) {}
             try { client?.disconnect() } catch (e: Exception) {}
