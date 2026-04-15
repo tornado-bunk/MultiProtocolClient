@@ -53,11 +53,22 @@
 - POP3 (110/995)
 - IMAP (143/993)
 
-## 🚀 Upcoming Features
-
 ### 🔐 Remote Access
-- Telnet (23)
-- SSH (22)
+- Telnet (Interactive Terminal)
+- SSH (Secure Shell with password auth)
+
+### 🌍 Network Tools
+- Wake-on-LAN (WoL) Magic Packet sender
+- WHOIS Domain Registrant Lookup (Port 43)
+
+### 📁 File Transfer
+- FTP (Active/Passive)
+- SFTP (Secure File Transfer)
+- TFTP (UDP Port 69 configuration fetcher)
+
+### 🔍 Discovery & Router Management
+- mDNS / Bonjour / SSDP (Network services & device discovery)
+- UPnP (IGD External IP and router discovery)
 
 ## 🎨 UI/UX
 - Material You design
