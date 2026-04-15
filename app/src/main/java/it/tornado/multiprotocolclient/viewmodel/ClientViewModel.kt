@@ -20,6 +20,7 @@ import it.tornado.multiprotocolclient.protocol.mail.ImapHandler
 import it.tornado.multiprotocolclient.protocol.ssh.InteractiveSshHandler
 import it.tornado.multiprotocolclient.protocol.telnet.InteractiveTelnetHandler
 import it.tornado.multiprotocolclient.protocol.wol.WolHandler
+import it.tornado.multiprotocolclient.protocol.whois.WhoisHandler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,6 +42,7 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
     private val pop3Handler = Pop3Handler()
     private val imapHandler = ImapHandler()
     private val wolHandler = WolHandler()
+    private val whoisHandler = WhoisHandler()
 
     init {
         // Initialize Cronet engine for HTTP/3 support
@@ -284,6 +286,15 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
     fun sendWolRequest(macAddress: String, broadcastAddress: String, port: Int = 9) {
         viewModelScope.launch {
             wolHandler.sendWakeOnLan(macAddress, broadcastAddress, port).collect { chunk ->
+                _response.value += chunk
+            }
+        }
+    }
+
+    // WHOIS Section
+    fun sendWhoisRequest(domain: String) {
+        viewModelScope.launch {
+            whoisHandler.queryWhois(domain).collect { chunk ->
                 _response.value += chunk
             }
         }

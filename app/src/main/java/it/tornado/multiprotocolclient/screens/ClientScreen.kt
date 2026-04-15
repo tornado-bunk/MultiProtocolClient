@@ -113,7 +113,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     var seeOnlyStatusCode by remember { mutableStateOf(false) }
     var trustSelfSigned by remember { mutableStateOf(false) }
 
-    val protocols = listOf("HTTP", "DNS", "NTP", "Ping", "Traceroute", "SMTP", "POP3", "IMAP", "Telnet", "SSH", "WoL", "Custom")
+    val protocols = listOf("HTTP", "DNS", "NTP", "Ping", "Traceroute", "SMTP", "POP3", "IMAP", "Telnet", "SSH", "WoL", "WHOIS", "Custom")
     var selectedProtocol by remember { mutableStateOf(protocols[0]) }
     var ipAddress by remember { mutableStateOf("") }
     var port by remember { mutableStateOf("") }
@@ -844,6 +844,18 @@ fun ClientScreen(modifier: Modifier = Modifier) {
             )
         }
 
+        // WHOIS fields
+        if (selectedProtocol == "WHOIS") {
+            Spacer(modifier = Modifier.height(16.dp))
+            OutlinedTextField(
+                value = ipAddress,
+                onValueChange = { ipAddress = it },
+                label = { Text("Domain (e.g. google.com)") },
+                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
         // Show additional fields based on the selected protocol
         if (selectedProtocol == "Custom") {
             Spacer(modifier = Modifier.height(16.dp))
@@ -988,6 +1000,10 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                         "WoL" -> {
                             wolMacAddress = ""
                             wolBroadcast = "255.255.255.255"
+                        }
+
+                        "WHOIS" -> {
+                            ipAddress = ""
                         }
 
                         "Custom" -> {
@@ -1166,6 +1182,14 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                                 return@FilledTonalButton
                             }
                         }
+                        "WHOIS" -> {
+                            if (ipAddress.isEmpty()) {
+                                coroutineScope.launch {
+                                    Toast.makeText(context, "Domain is required", Toast.LENGTH_SHORT).show()
+                                }
+                                return@FilledTonalButton
+                            }
+                        }
                     }
 
                     // Wrap the send logic in the permission check
@@ -1230,6 +1254,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             "POP3" -> viewModel.sendPop3Request(ipAddress, port, useSSL)
                             "IMAP" -> viewModel.sendImapRequest(ipAddress, port, useSSL)
                             "WoL" -> viewModel.sendWolRequest(wolMacAddress, wolBroadcast)
+                            "WHOIS" -> viewModel.sendWhoisRequest(ipAddress)
                         }
                         coroutineScope.launch {
                             Toast.makeText(context, "Request Sent", Toast.LENGTH_SHORT).show()
