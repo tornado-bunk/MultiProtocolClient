@@ -79,6 +79,9 @@
 - Dedicated mDNS / Bonjour service discovery by service type
 - UPnP (IGD External IP and router discovery)
 
+### Security and Troubleshooting
+- TCP Port Scanner with configurable port range and timeout
+
 ## 🎨 UI/UX
 - Material You design
 - Dynamic theming

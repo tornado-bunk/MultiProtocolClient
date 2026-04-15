@@ -32,6 +32,7 @@ import it.tornado.multiprotocolclient.protocol.upnp.UpnpHandler
 import it.tornado.multiprotocolclient.protocol.iperf.Iperf2Handler
 import it.tornado.multiprotocolclient.protocol.iperf.Iperf3Handler
 import it.tornado.multiprotocolclient.protocol.mdns.MdnsBonjourHandler
+import it.tornado.multiprotocolclient.protocol.portscanner.PortScannerHandler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -63,6 +64,7 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
     private val iperf3Handler = Iperf3Handler()
     private val iperf2Handler = Iperf2Handler()
     private val mdnsBonjourHandler = MdnsBonjourHandler(application.applicationContext)
+    private val portScannerHandler = PortScannerHandler()
 
     init {
         // Register BouncyCastle provider for advanced cryptography (needed for SSH/SFTP x25519)
@@ -417,6 +419,18 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
             val timeout = timeoutSeconds.toIntOrNull() ?: 8
             val type = serviceType.trim().ifEmpty { "_http._tcp." }
             mdnsBonjourHandler.discoverServices(timeout, type).collect { chunk ->
+                _response.value += chunk
+            }
+        }
+    }
+
+    // Port Scanner Section
+    fun sendPortScannerRequest(host: String, startPort: String, endPort: String, timeoutMs: String) {
+        viewModelScope.launch {
+            val start = startPort.toIntOrNull() ?: 1
+            val end = endPort.toIntOrNull() ?: 1024
+            val timeout = timeoutMs.toIntOrNull() ?: 250
+            portScannerHandler.scanTcpPorts(host.trim(), start, end, timeout).collect { chunk ->
                 _response.value += chunk
             }
         }

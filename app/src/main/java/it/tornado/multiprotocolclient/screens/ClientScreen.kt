@@ -115,8 +115,8 @@ fun ClientScreen(modifier: Modifier = Modifier) {
 
     val protocols = listOf(
         "HTTP", "DNS", "NTP", "Ping", "Traceroute", "SMTP", "POP3", "IMAP",
-        "FTP", "TFTP", "SNMP", "MQTT", "iPerf3", "iPerf2", "mDNS / Bonjour", "Telnet", "SSH", "WoL",
-        "WHOIS", "Discovery", "UPnP", "Custom"
+        "FTP", "TFTP", "SNMP", "MQTT", "iPerf3", "iPerf2", "mDNS / Bonjour",
+        "Port Scanner", "Telnet", "SSH", "WoL", "WHOIS", "Discovery", "UPnP", "Custom"
     )
     var selectedProtocol by remember { mutableStateOf(protocols[0]) }
     var ipAddress by remember { mutableStateOf("") }
@@ -161,6 +161,9 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     var iperfReverse by remember { mutableStateOf(false) }
     var mdnsServiceType by remember { mutableStateOf("_http._tcp.") }
     var mdnsTimeout by remember { mutableStateOf("8") }
+    var portScanStartPort by remember { mutableStateOf("1") }
+    var portScanEndPort by remember { mutableStateOf("1024") }
+    var portScanTimeoutMs by remember { mutableStateOf("250") }
     var expandedDnsType by remember { mutableStateOf(false) }
     var expandedResolver by remember { mutableStateOf(false) }
     var useRecursion by remember { mutableStateOf(true) }
@@ -245,6 +248,12 @@ fun ClientScreen(modifier: Modifier = Modifier) {
             "mDNS / Bonjour" -> {
                 mdnsServiceType = "_http._tcp."
                 mdnsTimeout = "8"
+            }
+
+            "Port Scanner" -> {
+                portScanStartPort = "1"
+                portScanEndPort = "1024"
+                portScanTimeoutMs = "250"
             }
 
             "Telnet" -> {
@@ -889,6 +898,45 @@ fun ClientScreen(modifier: Modifier = Modifier) {
             )
         }
 
+        if (selectedProtocol == "Port Scanner") {
+            Spacer(modifier = Modifier.height(16.dp))
+            OutlinedTextField(
+                value = ipAddress,
+                onValueChange = { ipAddress = it },
+                label = { Text("Target Host") },
+                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = portScanStartPort,
+                    onValueChange = { portScanStartPort = it },
+                    label = { Text("Start Port") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedTextField(
+                    value = portScanEndPort,
+                    onValueChange = { portScanEndPort = it },
+                    label = { Text("End Port") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedTextField(
+                    value = portScanTimeoutMs,
+                    onValueChange = { portScanTimeoutMs = it },
+                    label = { Text("Timeout ms") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
 
 
         // Show additional fields based on the selected protocol
@@ -1376,6 +1424,13 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             mdnsTimeout = "8"
                         }
 
+                        "Port Scanner" -> {
+                            ipAddress = ""
+                            portScanStartPort = "1"
+                            portScanEndPort = "1024"
+                            portScanTimeoutMs = "250"
+                        }
+
                         "Telnet" -> {
                             port = "23"
                         }
@@ -1621,6 +1676,36 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             }
                         }
 
+                        "Port Scanner" -> {
+                            if (ipAddress.isEmpty()) {
+                                coroutineScope.launch {
+                                    Toast.makeText(context, "Target host is required", Toast.LENGTH_SHORT).show()
+                                }
+                                return@FilledTonalButton
+                            }
+                            val startPort = portScanStartPort.toIntOrNull()
+                            val endPort = portScanEndPort.toIntOrNull()
+                            val timeoutMs = portScanTimeoutMs.toIntOrNull()
+                            if (startPort == null || endPort == null || startPort !in 1..65535 || endPort !in 1..65535) {
+                                coroutineScope.launch {
+                                    Toast.makeText(context, "Ports must be between 1 and 65535", Toast.LENGTH_SHORT).show()
+                                }
+                                return@FilledTonalButton
+                            }
+                            if (startPort > endPort) {
+                                coroutineScope.launch {
+                                    Toast.makeText(context, "Start port must be <= end port", Toast.LENGTH_SHORT).show()
+                                }
+                                return@FilledTonalButton
+                            }
+                            if (timeoutMs == null || timeoutMs !in 50..5000) {
+                                coroutineScope.launch {
+                                    Toast.makeText(context, "Timeout must be between 50 and 5000 ms", Toast.LENGTH_SHORT).show()
+                                }
+                                return@FilledTonalButton
+                            }
+                        }
+
                         "Ping", "Traceroute", "FTP", "TFTP", "SNMP", "MQTT" -> {
                             if (ipAddress.isEmpty()) {
                                 coroutineScope.launch {
@@ -1722,6 +1807,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                             "iPerf3" -> viewModel.sendIperf3Request(ipAddress, port, iperfDuration, iperfUseUdp, iperfReverse)
                             "iPerf2" -> viewModel.sendIperf2Request(ipAddress, port, iperfDuration, iperfUseUdp)
                             "mDNS / Bonjour" -> viewModel.sendMdnsBonjourRequest(mdnsServiceType, mdnsTimeout)
+                            "Port Scanner" -> viewModel.sendPortScannerRequest(ipAddress, portScanStartPort, portScanEndPort, portScanTimeoutMs)
                             "WoL" -> viewModel.sendWolRequest(wolMacAddress, wolBroadcast)
                             "WHOIS" -> viewModel.sendWhoisRequest(ipAddress)
                             "Discovery" -> viewModel.sendDiscoveryRequest()
