@@ -3,6 +3,10 @@ package it.tornado.multiprotocolclient.protocol.ssh
 import net.schmizz.sshj.SSHClient
 import net.schmizz.sshj.connection.channel.direct.Session
 import net.schmizz.sshj.transport.verification.PromiscuousVerifier
+import net.schmizz.sshj.userauth.method.AuthKeyboardInteractive
+import net.schmizz.sshj.userauth.method.PasswordResponseProvider
+import net.schmizz.sshj.userauth.password.PasswordFinder
+import net.schmizz.sshj.userauth.password.Resource
 import kotlinx.coroutines.*
 import java.io.InputStream
 import java.io.OutputStream
@@ -26,7 +30,17 @@ class InteractiveSshHandler {
                 client = SSHClient().apply {
                     addHostKeyVerifier(PromiscuousVerifier())
                     connect(host, port)
-                    authPassword(user, pass)
+                    
+                    try {
+                        authPassword(user, pass)
+                    } catch (e: Exception) {
+                        // Fallback to keyboard-interactive
+                        val finder = object : PasswordFinder {
+                            override fun reqPassword(resource: Resource<*>?): CharArray = pass.toCharArray()
+                            override fun shouldRetry(resource: Resource<*>?): Boolean = false
+                        }
+                        auth(user, AuthKeyboardInteractive(PasswordResponseProvider(finder)))
+                    }
                 }
                 session = client?.startSession()
                 session?.allocateDefaultPTY()

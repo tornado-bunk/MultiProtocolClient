@@ -7,6 +7,10 @@ import kotlinx.coroutines.flow.flowOn
 import net.schmizz.sshj.SSHClient
 import net.schmizz.sshj.sftp.SFTPClient
 import net.schmizz.sshj.transport.verification.PromiscuousVerifier
+import net.schmizz.sshj.userauth.method.AuthKeyboardInteractive
+import net.schmizz.sshj.userauth.method.PasswordResponseProvider
+import net.schmizz.sshj.userauth.password.PasswordFinder
+import net.schmizz.sshj.userauth.password.Resource
 import org.apache.commons.net.ftp.FTPClient
 import org.apache.commons.net.ftp.FTPReply
 
@@ -83,13 +87,17 @@ class FtpHandler {
             emit("Connected. Authenticating as '$user'...")
             
             try {
+                // Try password auth first
                 client.authPassword(user, pass)
                 emit("Authenticated via password.")
             } catch (e: Exception) {
-                emit("Password auth failed, trying interactive...")
-                client.authInteractive(user) { _, _, _, prompt, _ ->
-                    prompt.map { pass }
+                emit("Password auth failed, trying keyboard-interactive...")
+                // Fallback to keyboard-interactive using PasswordResponseProvider
+                val finder = object : PasswordFinder {
+                    override fun reqPassword(resource: Resource<*>?): CharArray = pass.toCharArray()
+                    override fun shouldRetry(resource: Resource<*>?): Boolean = false
                 }
+                client.auth(user, AuthKeyboardInteractive(PasswordResponseProvider(finder)))
                 emit("Authenticated via keyboard-interactive.")
             }
             
