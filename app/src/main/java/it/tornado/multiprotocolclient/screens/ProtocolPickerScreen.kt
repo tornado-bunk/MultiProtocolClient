@@ -80,7 +80,7 @@ fun ProtocolPickerScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .widthIn(max = maxContentWidth)
-                        .padding(horizontal = horizontalPadding)
+                        .padding(start = horizontalPadding, top = 6.dp, end = horizontalPadding)
                         .fillMaxSize()
                 ) {
                     LazyColumn(

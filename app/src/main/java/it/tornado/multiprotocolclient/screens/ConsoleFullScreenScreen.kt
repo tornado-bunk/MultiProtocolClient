@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -35,6 +36,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -43,20 +45,38 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
+import it.tornado.multiprotocolclient.settings.ConsoleFontSize
+import it.tornado.multiprotocolclient.settings.UiSettings
+import it.tornado.multiprotocolclient.settings.renderConsoleLines
 import it.tornado.multiprotocolclient.viewmodel.ClientViewModel
 
 @Composable
 fun ConsoleFullScreenScreen(
     modifier: Modifier = Modifier,
+    uiSettings: UiSettings = UiSettings(),
     viewModel: ClientViewModel,
     onBackToRequest: () -> Unit
 ) {
     val response by viewModel.response.collectAsState()
+    val renderedResponse = remember(response, uiSettings.consoleShowTimestamps, uiSettings.maskSensitiveOutput, uiSettings.consoleBufferLimit) {
+        renderConsoleLines(response, uiSettings)
+    }
+    val consoleTextStyle = when (uiSettings.consoleFontSize) {
+        ConsoleFontSize.SMALL -> MaterialTheme.typography.bodySmall
+        ConsoleFontSize.MEDIUM -> MaterialTheme.typography.bodyMedium
+        ConsoleFontSize.LARGE -> MaterialTheme.typography.bodyLarge
+    }
+    val listState = rememberLazyListState()
     val clipboardManager = LocalClipboardManager.current
     var showContent by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         showContent = true
+    }
+    LaunchedEffect(renderedResponse.size, uiSettings.consoleAutoScroll) {
+        if (uiSettings.consoleAutoScroll && renderedResponse.isNotEmpty()) {
+            listState.animateScrollToItem(renderedResponse.lastIndex)
+        }
     }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
@@ -79,11 +99,16 @@ fun ConsoleFullScreenScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .widthIn(max = maxContentWidth)
-                        .padding(horizontal = horizontalPadding)
+                        .padding(start = horizontalPadding, top = 6.dp, end = horizontalPadding)
                         .fillMaxSize()
                 ) {
                     CenterAlignedTopAppBar(
                         title = { Text("Console", style = MaterialTheme.typography.titleLarge) },
+                        navigationIcon = {
+                            IconButton(onClick = onBackToRequest) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            }
+                        },
                         colors = TopAppBarDefaults.topAppBarColors(
                             containerColor = Color.Transparent
                         ),
@@ -99,7 +124,7 @@ fun ConsoleFullScreenScreen(
                                 .weight(1f)
                                 .heightIn(min = 52.dp),
                             shape = MaterialTheme.shapes.extraLarge,
-                            onClick = { clipboardManager.setText(AnnotatedString(response.joinToString("\n"))) },
+                            onClick = { clipboardManager.setText(AnnotatedString(renderedResponse.joinToString("\n"))) },
                         ) {
                             Text("Copy")
                         }
@@ -109,7 +134,7 @@ fun ConsoleFullScreenScreen(
                                 .heightIn(min = 52.dp),
                             shape = MaterialTheme.shapes.extraLarge,
                             onClick = { viewModel.resetResponse() },
-                            enabled = response.isNotEmpty()
+                            enabled = renderedResponse.isNotEmpty()
                         ) {
                             Text("Clear")
                         }
@@ -130,9 +155,10 @@ fun ConsoleFullScreenScreen(
                                 .padding(10.dp)
                         ) {
                             LazyColumn(
-                                modifier = Modifier.fillMaxSize()
+                                modifier = Modifier.fillMaxSize(),
+                                state = listState
                             ) {
-                                items(response) { line ->
+                                items(renderedResponse) { line ->
                                     when {
                                         line.startsWith("=== ") -> {
                                             Text(
@@ -163,7 +189,7 @@ fun ConsoleFullScreenScreen(
                                         else -> {
                                             Text(
                                                 text = line,
-                                                style = MaterialTheme.typography.bodyMedium,
+                                                style = consoleTextStyle,
                                                 modifier = Modifier
                                                     .fillMaxWidth()
                                                     .padding(vertical = 1.dp)

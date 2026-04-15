@@ -1,5 +1,8 @@
 package it.tornado.multiprotocolclient.screens
 import it.tornado.multiprotocolclient.viewmodel.ClientViewModel
+import it.tornado.multiprotocolclient.settings.ConsoleFontSize
+import it.tornado.multiprotocolclient.settings.UiSettings
+import it.tornado.multiprotocolclient.settings.renderConsoleLines
 
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
@@ -14,6 +17,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -24,6 +28,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
@@ -55,12 +60,27 @@ import java.time.ZoneId
 fun ClientScreen(
     modifier: Modifier = Modifier,
     viewModel: ClientViewModel,
+    uiSettings: UiSettings = UiSettings(),
     initialProtocol: String = allProtocols.first(),
     showProtocolPickerInline: Boolean = true,
     onChangeProtocolRequested: () -> Unit = {},
     onOpenFullscreenConsole: (() -> Unit)? = null
 ) {
     val response by viewModel.response.collectAsState()
+    val renderedResponse = remember(
+        response,
+        uiSettings.consoleShowTimestamps,
+        uiSettings.maskSensitiveOutput,
+        uiSettings.consoleBufferLimit
+    ) {
+        renderConsoleLines(response, uiSettings)
+    }
+    val consoleTextStyle = when (uiSettings.consoleFontSize) {
+        ConsoleFontSize.SMALL -> MaterialTheme.typography.bodySmall
+        ConsoleFontSize.MEDIUM -> MaterialTheme.typography.bodyMedium
+        ConsoleFontSize.LARGE -> MaterialTheme.typography.bodyLarge
+    }
+    val previewListState = rememberLazyListState()
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
     val focusManager = LocalFocusManager.current
@@ -72,15 +92,16 @@ fun ClientScreen(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
-            // Permission granted, retry the pending action if any? 
-            // For now, user has to click Send again or we could automagically handle it.
-            // Simpler to just let them click again as Toast will say "Permission granted" or similar if we wanted.
-            coroutineScope.launch {
-                Toast.makeText(context, "Permission granted. Please click Send again.", Toast.LENGTH_SHORT).show()
+            if (uiSettings.showLocalNetworkWarnings) {
+                coroutineScope.launch {
+                    Toast.makeText(context, "Permission granted. Please click Send again.", Toast.LENGTH_SHORT).show()
+                }
             }
         } else {
-             coroutineScope.launch {
-                Toast.makeText(context, "Permission denied. Local connections may fail.", Toast.LENGTH_LONG).show()
+            if (uiSettings.showLocalNetworkWarnings) {
+                coroutineScope.launch {
+                    Toast.makeText(context, "Permission denied. Local connections may fail.", Toast.LENGTH_LONG).show()
+                }
             }
         }
     }
@@ -205,13 +226,28 @@ fun ClientScreen(
     }
     var animateIn by remember { mutableStateOf(false) }
     val compactLayoutProtocols = setOf("Discovery", "UPnP", "SSH", "Telnet", "WHOIS", "Ping", "Traceroute")
+    val defaultTimeoutSeconds = uiSettings.defaultTimeoutSeconds.coerceIn(1, 120)
+    val defaultTimeoutMs = (defaultTimeoutSeconds * 100).coerceIn(50, 5000)
 
     LaunchedEffect(Unit) {
         animateIn = true
     }
 
+    LaunchedEffect(renderedResponse.size, uiSettings.consoleAutoScroll) {
+        if (uiSettings.consoleAutoScroll && renderedResponse.isNotEmpty()) {
+            previewListState.animateScrollToItem(renderedResponse.lastIndex)
+        }
+    }
+
     //At launch, reset the fields based on the selected protocol
     LaunchedEffect(selectedProtocol) {
+        if (uiSettings.keepLastFieldsPerProtocol) {
+            viewModel.resetResponse()
+            viewModel.disconnectInteractiveSession("Telnet")
+            viewModel.disconnectInteractiveSession("SSH")
+            return@LaunchedEffect
+        }
+
         // Reset common fields
         ipAddress = ""
         port = ""
@@ -277,13 +313,13 @@ fun ClientScreen(
 
             "mDNS / Bonjour" -> {
                 mdnsServiceType = "_http._tcp."
-                mdnsTimeout = "8"
+                mdnsTimeout = defaultTimeoutSeconds.toString()
             }
 
             "Port Scanner" -> {
                 portScanStartPort = "1"
                 portScanEndPort = "1024"
-                portScanTimeoutMs = "250"
+                portScanTimeoutMs = defaultTimeoutMs.toString()
             }
 
             "Telnet" -> {
@@ -329,7 +365,7 @@ fun ClientScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .widthIn(max = maxContentWidth)
-                    .padding(horizontal = horizontalPadding)
+                    .padding(start = horizontalPadding, top = 6.dp, end = horizontalPadding)
                     .fillMaxSize()
             ) {
                 if (!showProtocolPickerInline) {
@@ -337,9 +373,10 @@ fun ClientScreen(
                         title = {
                             Text(
                                 text = selectedProtocol,
-                                style = MaterialTheme.typography.titleLarge
+                                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold)
                             )
                         },
+                        expandedHeight = 56.dp,
                         colors = TopAppBarDefaults.topAppBarColors(
                             containerColor = Color.Transparent
                         ),
@@ -1455,6 +1492,122 @@ fun ClientScreen(
             }
         } // End of scrollable Column
 
+        var showResetConfirmDialog by remember { mutableStateOf(false) }
+
+        fun performReset() {
+            focusManager.clearFocus()
+            when (selectedProtocol) {
+                "HTTP" -> {
+                    ipAddress = ""
+                    port = if (useSSL) "443" else "80"
+                    useSSL = true
+                    seeOnlyStatusCode = false
+                    trustSelfSigned = false
+                }
+                "DNS" -> {
+                    ipAddress = ""
+                    dnsQueryType = "A"
+                    selectedResolver = "Google DNS (8.8.8.8)"
+                    useDnsOverHttps = false
+                    useDnsOverTls = false
+                    useDnsOverQuic = false
+                    forceHttp3 = false
+                    useCustomResolver = false
+                    customResolverHost = ""
+                    customResolverPort = "53"
+                    useRecursion = true
+                    useTcp4Dns = false
+                }
+                "NTP" -> {
+                    ipAddress = ""
+                    selectedTimezone = ZoneId.systemDefault().id
+                    useSystemTimezone = true
+                }
+                "Ping", "Traceroute" -> ipAddress = ""
+                "SMTP" -> {
+                    ipAddress = ""
+                    port = "587"
+                    useSSL = false
+                    useStartTls = true
+                }
+                "POP3" -> {
+                    ipAddress = ""
+                    port = "110"
+                    useSSL = false
+                }
+                "IMAP" -> {
+                    ipAddress = ""
+                    port = "143"
+                    useSSL = false
+                }
+                "iPerf3" -> {
+                    ipAddress = ""
+                    port = "5201"
+                    iperfDuration = "10"
+                    iperfUseUdp = false
+                    iperfReverse = false
+                }
+                "iPerf2" -> {
+                    ipAddress = ""
+                    port = "5001"
+                    iperfDuration = "10"
+                    iperfUseUdp = false
+                    iperfReverse = false
+                }
+                "mDNS / Bonjour" -> {
+                    mdnsServiceType = "_http._tcp."
+                    mdnsTimeout = defaultTimeoutSeconds.toString()
+                }
+                "Port Scanner" -> {
+                    ipAddress = ""
+                    portScanStartPort = "1"
+                    portScanEndPort = "1024"
+                    portScanTimeoutMs = defaultTimeoutMs.toString()
+                }
+                "Telnet" -> port = "23"
+                "SSH" -> port = "22"
+                "WoL" -> {
+                    wolMacAddress = ""
+                    wolBroadcast = "255.255.255.255"
+                }
+                "WHOIS" -> ipAddress = ""
+                "FTP" -> {
+                    ipAddress = ""
+                    port = if (useSftp) "22" else "21"
+                    ftpUsername = "anonymous"
+                    ftpPassword = ""
+                }
+                "TFTP" -> {
+                    ipAddress = ""
+                    port = "69"
+                    tftpFilename = ""
+                }
+                "SNMP" -> {
+                    ipAddress = ""
+                    port = "161"
+                    snmpCommunity = "public"
+                    snmpOid = "1.3.6.1.2.1.1.1.0"
+                }
+                "MQTT" -> {
+                    ipAddress = ""
+                    port = if (useSSL) "8883" else "1883"
+                    mqttTopic = "#"
+                    ftpUsername = ""
+                    ftpPassword = ""
+                    useSSL = false
+                }
+                "Discovery", "UPnP" -> Unit
+                "Custom" -> {
+                    ipAddress = ""
+                    port = ""
+                    useTcp = true
+                }
+            }
+            viewModel.resetResponse()
+            viewModel.disconnectInteractiveSession("Telnet")
+            viewModel.disconnectInteractiveSession("SSH")
+        }
+
         Spacer(modifier = Modifier.height(if (selectedProtocol in compactLayoutProtocols) 8.dp else 16.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1464,148 +1617,11 @@ fun ClientScreen(
                 modifier = Modifier.heightIn(min = 52.dp),
                 shape = MaterialTheme.shapes.extraLarge,
                 onClick = {
-                    focusManager.clearFocus()
-                    // Reset fields based on the selected protocol
-                    when (selectedProtocol) {
-                        "HTTP" -> {
-                            ipAddress = ""
-                            port = if (useSSL) "443" else "80"
-                            useSSL = true
-                            seeOnlyStatusCode = false
-                            trustSelfSigned = false
-                        }
-
-                        "DNS" -> {
-                            ipAddress = ""
-                            dnsQueryType = "A"
-                            selectedResolver = "Google DNS (8.8.8.8)"
-                            useDnsOverHttps = false
-                            useDnsOverTls = false
-                            useDnsOverQuic = false
-                            forceHttp3 = false
-                            useCustomResolver = false
-                            customResolverHost = ""
-                            customResolverPort = "53"
-                            useRecursion = true
-                            useTcp4Dns = false
-                        }
-
-                        "NTP" -> {
-                            ipAddress = ""
-                            selectedTimezone = ZoneId.systemDefault().id
-                            useSystemTimezone = true
-                        }
-
-                        "Ping", "Traceroute" -> {
-                            ipAddress = ""
-                        }
-
-                        "SMTP" -> {
-                            ipAddress = ""
-                            port = "587"
-                            useSSL = false
-                            useStartTls = true
-                        }
-
-                        "POP3" -> {
-                            ipAddress = ""
-                            port = "110"
-                            useSSL = false
-                        }
-
-                        "IMAP" -> {
-                            ipAddress = ""
-                            port = "143"
-                            useSSL = false
-                        }
-
-                        "iPerf3" -> {
-                            ipAddress = ""
-                            port = "5201"
-                            iperfDuration = "10"
-                            iperfUseUdp = false
-                            iperfReverse = false
-                        }
-
-                        "iPerf2" -> {
-                            ipAddress = ""
-                            port = "5001"
-                            iperfDuration = "10"
-                            iperfUseUdp = false
-                            iperfReverse = false
-                        }
-
-                        "mDNS / Bonjour" -> {
-                            mdnsServiceType = "_http._tcp."
-                            mdnsTimeout = "8"
-                        }
-
-                        "Port Scanner" -> {
-                            ipAddress = ""
-                            portScanStartPort = "1"
-                            portScanEndPort = "1024"
-                            portScanTimeoutMs = "250"
-                        }
-
-                        "Telnet" -> {
-                            port = "23"
-                        }
-
-                        "SSH" -> {
-                            port = "22"
-                        }
-
-                        "WoL" -> {
-                            wolMacAddress = ""
-                            wolBroadcast = "255.255.255.255"
-                        }
-
-                        "WHOIS" -> {
-                            ipAddress = ""
-                        }
-
-                        "FTP" -> {
-                            ipAddress = ""
-                            port = if (useSftp) "22" else "21"
-                            ftpUsername = "anonymous"
-                            ftpPassword = ""
-                        }
-
-                        "TFTP" -> {
-                            ipAddress = ""
-                            port = "69"
-                            tftpFilename = ""
-                        }
-
-                        "SNMP" -> {
-                            ipAddress = ""
-                            port = "161"
-                            snmpCommunity = "public"
-                            snmpOid = "1.3.6.1.2.1.1.1.0"
-                        }
-
-                        "MQTT" -> {
-                            ipAddress = ""
-                            port = if (useSSL) "8883" else "1883"
-                            mqttTopic = "#"
-                            ftpUsername = ""
-                            ftpPassword = ""
-                            useSSL = false
-                        }
-
-                        "Discovery", "UPnP" -> {
-                            // nothing to reset
-                        }
-
-                        "Custom" -> {
-                            ipAddress = ""
-                            port = ""
-                            useTcp = true
-                        }
+                    if (uiSettings.confirmBeforeReset) {
+                        showResetConfirmDialog = true
+                    } else {
+                        performReset()
                     }
-                    viewModel.resetResponse()
-                    viewModel.disconnectInteractiveSession("Telnet")
-                    viewModel.disconnectInteractiveSession("SSH")
                 }
             ) {
                 Text(text = "Reset")
@@ -1986,13 +2002,13 @@ fun ClientScreen(
                         modifier = Modifier.heightIn(min = 44.dp),
                         shape = MaterialTheme.shapes.large,
                         onClick = {
-                            val fullText = response.joinToString("\n")
+                            val fullText = renderedResponse.joinToString("\n")
                             clipboardManager.setText(AnnotatedString(fullText))
                             coroutineScope.launch {
                                 Toast.makeText(context, "Output copied to clipboard", Toast.LENGTH_SHORT).show()
                             }
                         },
-                        enabled = response.isNotEmpty()
+                        enabled = renderedResponse.isNotEmpty()
                     ) {
                         Text("Copy output")
                     }
@@ -2002,9 +2018,10 @@ fun ClientScreen(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
+                        state = previewListState
                     ) {
-                        items(response) { line ->
+                        items(renderedResponse) { line ->
                             when {
                                 line.startsWith("=== ") -> {
                                     Text(
@@ -2035,6 +2052,7 @@ fun ClientScreen(
                                 else -> {
                                     Text(
                                         text = line,
+                                        style = consoleTextStyle,
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .padding(vertical = 1.dp)
@@ -2045,6 +2063,25 @@ fun ClientScreen(
                     }
                 }
             }
+        }
+
+        if (showResetConfirmDialog) {
+            AlertDialog(
+                onDismissRequest = { showResetConfirmDialog = false },
+                title = { Text("Reset fields?") },
+                text = { Text("This will reset current protocol fields and clear console output.") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showResetConfirmDialog = false
+                            performReset()
+                        }
+                    ) { Text("Reset") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showResetConfirmDialog = false }) { Text("Cancel") }
+                }
+            )
         }
     }
     }

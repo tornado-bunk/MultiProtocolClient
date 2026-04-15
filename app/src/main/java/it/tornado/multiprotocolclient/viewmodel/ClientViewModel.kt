@@ -46,6 +46,8 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
     private val _response = MutableStateFlow<List<String>>(emptyList())
     val response: StateFlow<List<String>> = _response.asStateFlow()
     private var activeProtocol: String = "General"
+    private val _activeProtocol = MutableStateFlow(activeProtocol)
+    val activeProtocolFlow: StateFlow<String> = _activeProtocol.asStateFlow()
     private val timeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
     private val dnsHandler = DnsHandler()
@@ -93,6 +95,7 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun beginProtocolOutput(protocol: String, requestSummary: List<String>) {
         activeProtocol = protocol
+        _activeProtocol.value = protocol
         _response.value = buildList {
             add("=== $protocol ===")
             add("SECTION: SUMMARY")
@@ -717,6 +720,7 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
 
     fun resetResponse() {
         activeProtocol = "General"
+        _activeProtocol.value = activeProtocol
         _response.value = emptyList()
     }
 }

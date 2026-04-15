@@ -22,8 +22,9 @@ sshj = "0.40.0"
 slf4j = "2.0.17"
 cronet = "18.1.1"
 kwik = "0.10.8"
-snmp4j = "3.8.2"
+snmp4j = "3.9.7"
 pahoMqtt = "1.2.5"
+datastorePreferences = "1.2.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -54,6 +55,7 @@ play-services-cronet = { group = "com.google.android.gms", name = "play-services
 kwik = { module = "tech.kwik:kwik", version.ref = "kwik" }
 snmp4j = { module = "org.snmp4j:snmp4j", version.ref = "snmp4j" }
 paho-mqtt = { module = "org.eclipse.paho:org.eclipse.paho.client.mqttv3", version.ref = "pahoMqtt" }
+androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastorePreferences" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

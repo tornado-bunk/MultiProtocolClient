@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
@@ -18,7 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.ButtonDefaults
@@ -32,7 +33,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,10 +58,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
 import it.tornado.multiprotocolclient.ui.theme.MultiProtocolClientTheme
-import it.tornado.multiprotocolclient.screens.AboutScreen
 import it.tornado.multiprotocolclient.screens.ClientScreen
 import it.tornado.multiprotocolclient.screens.ConsoleFullScreenScreen
 import it.tornado.multiprotocolclient.screens.ProtocolPickerScreen
+import it.tornado.multiprotocolclient.screens.SettingsScreen
+import it.tornado.multiprotocolclient.settings.ThemeMode
+import it.tornado.multiprotocolclient.settings.UiSettingsViewModel
 import it.tornado.multiprotocolclient.viewmodel.ClientViewModel
 
 data class BottomNavigationItem(
@@ -70,9 +77,25 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MultiProtocolClientTheme(dynamicColor = false) {
+            val settingsViewModel: UiSettingsViewModel = viewModel()
+            val uiSettings by settingsViewModel.settings.collectAsState()
+            val isSystemDark = isSystemInDarkTheme()
+            val darkTheme = when (uiSettings.themeMode) {
+                ThemeMode.SYSTEM -> isSystemDark
+                ThemeMode.DARK -> true
+                ThemeMode.LIGHT -> false
+            }
+
+            MultiProtocolClientTheme(
+                darkTheme = darkTheme,
+                dynamicColor = uiSettings.dynamicColor,
+                textScale = uiSettings.uiTextSize.scaleFactor
+            ) {
                 val navController = rememberNavController()
-                MainScreen(navController = navController)
+                MainScreen(
+                    navController = navController,
+                    settingsViewModel = settingsViewModel
+                )
             }
         }
     }
@@ -80,8 +103,12 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
-fun MainScreen(navController: NavHostController) {
+fun MainScreen(
+    navController: NavHostController,
+    settingsViewModel: UiSettingsViewModel
+) {
     val clientViewModel: ClientViewModel = viewModel()
+    val uiSettings by settingsViewModel.settings.collectAsState()
     val items = listOf(
         BottomNavigationItem(
             title = "Home",
@@ -89,16 +116,17 @@ fun MainScreen(navController: NavHostController) {
             route = "protocol_picker"
         ),
         BottomNavigationItem(
-            title = "About",
-            icon = Icons.Filled.Info,
-            route = "about"
+            title = "Settings",
+            icon = Icons.Filled.Settings,
+            route = "settings"
         )
     )
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: "protocol_picker"
-    val showFloatingBar = currentRoute == "protocol_picker"
+    val showFloatingBar = currentRoute == "protocol_picker" || currentRoute == "settings"
     val bottomBarScrollBehavior = BottomAppBarDefaults.exitAlwaysScrollBehavior()
+    var previousRoute by rememberSaveable { mutableStateOf(currentRoute) }
 
     // Request permissions at startup
     if (Build.VERSION.SDK_INT >= 33) {
@@ -111,6 +139,17 @@ fun MainScreen(navController: NavHostController) {
         LaunchedEffect(Unit) {
             permissionLauncher.launch(Manifest.permission.NEARBY_WIFI_DEVICES)
         }
+    }
+
+    LaunchedEffect(currentRoute, uiSettings.clearOutputOnExit) {
+        if (uiSettings.clearOutputOnExit) {
+            val wasRequestFlow = previousRoute.startsWith("request_builder") || previousRoute.startsWith("console_fullscreen")
+            val nowOutsideRequestFlow = !currentRoute.startsWith("request_builder") && !currentRoute.startsWith("console_fullscreen")
+            if (wasRequestFlow && nowOutsideRequestFlow) {
+                clientViewModel.resetResponse()
+            }
+        }
+        previousRoute = currentRoute
     }
 
     Scaffold(
@@ -142,6 +181,7 @@ fun MainScreen(navController: NavHostController) {
                     ClientScreen(
                         modifier = Modifier,
                         viewModel = clientViewModel,
+                        uiSettings = uiSettings,
                         initialProtocol = protocolArg,
                         showProtocolPickerInline = false,
                         onChangeProtocolRequested = {
@@ -160,12 +200,15 @@ fun MainScreen(navController: NavHostController) {
                 }
                 composable("console_fullscreen") {
                     ConsoleFullScreenScreen(
+                        uiSettings = uiSettings,
                         viewModel = clientViewModel,
                         onBackToRequest = { navController.popBackStack() }
                     )
                 }
-                composable("about") {
-                    AboutScreen(modifier = Modifier)
+                composable("settings") {
+                    SettingsScreen(
+                        settingsViewModel = settingsViewModel
+                    )
                 }
             }
 
@@ -198,7 +241,7 @@ fun MainScreen(navController: NavHostController) {
                         ) {
                             items.forEach { item ->
                                 val selected = if (item.route == "protocol_picker") {
-                                    currentRoute != "about"
+                                    currentRoute == "protocol_picker" || currentRoute.startsWith("request_builder")
                                 } else {
                                     currentRoute.startsWith(item.route)
                                 }

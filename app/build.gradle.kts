@@ -67,6 +67,7 @@ dependencies {
     implementation(libs.androidx.material3.v131)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.material.icons.extended)
+    implementation(libs.androidx.datastore.preferences)
     implementation(libs.dnsjava.dnsjava)
     implementation(libs.json.json)
     testImplementation(libs.junit)
