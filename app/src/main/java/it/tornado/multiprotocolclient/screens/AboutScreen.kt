@@ -17,7 +17,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import it.tornado.multiprotocolclient.R
 
 @Composable
@@ -45,11 +44,8 @@ fun AboutScreen(modifier: Modifier = Modifier) {
         Spacer(modifier = Modifier.height(32.dp))
 
         Text(
-            text = "A modern and versatile Android application that allows interaction with different network protocols through an elegant and intuitive Material You interface.",
-            style = MaterialTheme.typography.headlineSmall.copy(
-                fontWeight = FontWeight.Light,
-                fontSize = 20.sp
-            ),
+            text = "A modern and versatile Android application for interacting with network protocols through an expressive Material 3 interface.",
+            style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = 16.dp)
@@ -64,21 +60,19 @@ fun AboutScreen(modifier: Modifier = Modifier) {
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(githubUrl))
                     context.startActivity(intent)
                 }
-                .padding(bottom = 32.dp),
+                .padding(bottom = 96.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
                 painter = painterResource(id = R.drawable.github_light),
                 contentDescription = "GitHub Logo",
-                modifier = Modifier.size(56.dp)
+                modifier = Modifier.size(56.dp),
+                tint = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "GitHub",
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
-                ),
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.primary,
                 textAlign = TextAlign.Center
             )

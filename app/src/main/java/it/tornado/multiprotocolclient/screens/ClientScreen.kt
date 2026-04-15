@@ -2,18 +2,31 @@ package it.tornado.multiprotocolclient.screens
 import it.tornado.multiprotocolclient.viewmodel.ClientViewModel
 
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement.spacedBy
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.runtime.getValue
@@ -37,10 +50,16 @@ import androidx.activity.result.contract.ActivityResultContracts
 
 import java.time.ZoneId
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun ClientScreen(modifier: Modifier = Modifier) {
-    val viewModel: ClientViewModel = viewModel()
+fun ClientScreen(
+    modifier: Modifier = Modifier,
+    viewModel: ClientViewModel,
+    initialProtocol: String = allProtocols.first(),
+    showProtocolPickerInline: Boolean = true,
+    onChangeProtocolRequested: () -> Unit = {},
+    onOpenFullscreenConsole: (() -> Unit)? = null
+) {
     val response by viewModel.response.collectAsState()
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
@@ -117,15 +136,16 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     var seeOnlyStatusCode by remember { mutableStateOf(false) }
     var trustSelfSigned by remember { mutableStateOf(false) }
 
-    val protocols = listOf(
-        "HTTP", "DNS", "NTP", "Ping", "Traceroute", "SMTP", "POP3", "IMAP",
-        "FTP", "TFTP", "SNMP", "MQTT", "iPerf3", "iPerf2", "mDNS / Bonjour",
-        "Port Scanner", "Telnet", "SSH", "WoL", "WHOIS", "Discovery", "UPnP", "Custom"
-    )
-    var selectedProtocol by remember { mutableStateOf(protocols[0]) }
+    var selectedProtocol by remember { mutableStateOf(initialProtocol.ifBlank { allProtocols.first() }) }
     var ipAddress by remember { mutableStateOf("") }
     var port by remember { mutableStateOf("") }
-    var expanded by remember { mutableStateOf(false) }
+    var expandedSection by remember { mutableStateOf(protocolSections.first().title) }
+
+    LaunchedEffect(initialProtocol) {
+        if (initialProtocol.isNotBlank() && selectedProtocol != initialProtocol) {
+            selectedProtocol = initialProtocol
+        }
+    }
 
     var expandedTimezone by remember { mutableStateOf(false) }
     var selectedTimezone by remember { mutableStateOf("") }
@@ -182,6 +202,12 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     )
     val doqResolvers = resolvers.filter {
         it.contains("AdGuard")
+    }
+    var animateIn by remember { mutableStateOf(false) }
+    val compactLayoutProtocols = setOf("Discovery", "UPnP", "SSH", "Telnet", "WHOIS", "Ping", "Traceroute")
+
+    LaunchedEffect(Unit) {
+        animateIn = true
     }
 
     //At launch, reset the fields based on the selected protocol
@@ -281,45 +307,130 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     }
 
     // Main content
-    Column(
-        modifier = modifier
-            .padding(16.dp)
-            .padding(top = 48.dp)
-            .fillMaxSize()
+    AnimatedVisibility(
+        visible = animateIn,
+        enter = fadeIn(animationSpec = tween(280)) + slideInVertically(
+            initialOffsetY = { it / 9 },
+            animationSpec = tween(320)
+        )
     ) {
-        Spacer(modifier = Modifier.height(8.dp))
-        // Add a scrollable column for the entire input section so it doesn't break small screens
-        Column(
-            modifier = Modifier
-                .weight(1f) // Takes available space above response box
-                .verticalScroll(rememberScrollState())
+    BoxWithConstraints(
+        modifier = modifier.fillMaxSize()
+    ) {
+        val isTabletScreen = maxWidth >= 840.dp
+        val horizontalPadding = if (isTabletScreen) 24.dp else 16.dp
+        val maxContentWidth = if (isTabletScreen) 960.dp else maxWidth
+
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.TopCenter
         ) {
-            ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = !expanded }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = maxContentWidth)
+                    .padding(horizontal = horizontalPadding)
+                    .fillMaxSize()
             ) {
-                OutlinedTextField(
-                    value = selectedProtocol,
-                    onValueChange = { },
-                    readOnly = true,
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(MenuAnchorType.PrimaryEditable)
+                if (!showProtocolPickerInline) {
+                    CenterAlignedTopAppBar(
+                        title = {
+                            Text(
+                                text = selectedProtocol,
+                                style = MaterialTheme.typography.titleLarge
+                            )
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = Color.Transparent
+                        ),
+                        windowInsets = WindowInsets(0, 0, 0, 0)
+                    )
+                }
+                // Scrollable input area; horizontal scroll prevents clipping on very small screens.
+                Column(
+                    modifier = if (!showProtocolPickerInline || selectedProtocol in compactLayoutProtocols) {
+                        Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                    } else {
+                        Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .verticalScroll(rememberScrollState())
+                    }
+                ) {
+            if (showProtocolPickerInline) {
+                Text(
+                    text = "Choose a protocol",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = "Protocols are grouped by category to keep the flow clear.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
                 )
 
-                ExposedDropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
-                ) {
-                    protocols.forEach { protocol ->
-                        DropdownMenuItem(
-                            text = { Text(text = protocol) },
-                            onClick = {
-                                selectedProtocol = protocol
-                                expanded = false
+                protocolSections.forEach { section ->
+                    ElevatedCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 10.dp),
+                        onClick = {
+                            expandedSection =
+                                if (expandedSection == section.title) "" else section.title
+                        }
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = section.title,
+                                    style = MaterialTheme.typography.titleSmall
+                                )
+                                Icon(
+                                    imageVector = if (expandedSection == section.title) {
+                                        Icons.Filled.ExpandLess
+                                    } else {
+                                        Icons.Filled.ExpandMore
+                                    },
+                                    contentDescription = null
+                                )
                             }
-                        )
+
+                            AnimatedVisibility(visible = expandedSection == section.title) {
+                                FlowRow(
+                                    horizontalArrangement = spacedBy(8.dp),
+                                    verticalArrangement = spacedBy(8.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 10.dp)
+                                ) {
+                                    section.protocols.forEach { protocol ->
+                                        FilterChip(
+                                            selected = selectedProtocol == protocol,
+                                            onClick = { selectedProtocol = protocol },
+                                            label = { Text(protocol) },
+                                            leadingIcon = if (selectedProtocol == protocol) {
+                                                {
+                                                    Icon(
+                                                        imageVector = Icons.Filled.Check,
+                                                        contentDescription = null
+                                                    )
+                                                }
+                                            } else {
+                                                null
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -422,7 +533,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
 
         // Show additional fields based on the selected protocol
         if (selectedProtocol == "DNS") {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(if (showProtocolPickerInline) 16.dp else 8.dp))
 
             // Domain and query type
             Row(
@@ -1344,13 +1455,14 @@ fun ClientScreen(modifier: Modifier = Modifier) {
             }
         } // End of scrollable Column
 
-        Spacer(modifier = Modifier.height(16.dp))
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(if (selectedProtocol in compactLayoutProtocols) 8.dp else 16.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             OutlinedButton(
+                modifier = Modifier.heightIn(min = 52.dp),
+                shape = MaterialTheme.shapes.extraLarge,
                 onClick = {
                     focusManager.clearFocus()
                     // Reset fields based on the selected protocol
@@ -1504,6 +1616,12 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                 
                 if (interactiveMode && isInteractiveSessionActive) {
                     FilledTonalButton(
+                        modifier = Modifier.heightIn(min = 52.dp),
+                        shape = MaterialTheme.shapes.extraLarge,
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                        ),
                         onClick = {
                             focusManager.clearFocus()
                             viewModel.disconnectInteractiveSession(selectedProtocol)
@@ -1515,6 +1633,12 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                 }
 
                 FilledTonalButton(
+                    modifier = Modifier.heightIn(min = 56.dp),
+                    shape = MaterialTheme.shapes.extraLarge,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    ),
                     onClick = {
                     if (
                         selectedProtocol != "WoL" &&
@@ -1837,6 +1961,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f) // Gives half/remaining space to output box on large screens
+                .padding(bottom = if (showProtocolPickerInline) 0.dp else 0.dp)
                 .heightIn(min = 200.dp) // Ensures it always has minimum height to scroll
         ) {
             Column(
@@ -1848,12 +1973,23 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
-                    TextButton(
+                    FilledTonalButton(
+                        modifier = Modifier.heightIn(min = 44.dp),
+                        shape = MaterialTheme.shapes.large,
+                        onClick = { onOpenFullscreenConsole?.invoke() },
+                        enabled = onOpenFullscreenConsole != null
+                    ) {
+                        Text("Full screen")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    OutlinedButton(
+                        modifier = Modifier.heightIn(min = 44.dp),
+                        shape = MaterialTheme.shapes.large,
                         onClick = {
                             val fullText = response.joinToString("\n")
                             clipboardManager.setText(AnnotatedString(fullText))
                             coroutineScope.launch {
-                                Toast.makeText(context, "Output copiato negli appunti", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Output copied to clipboard", Toast.LENGTH_SHORT).show()
                             }
                         },
                         enabled = response.isNotEmpty()
@@ -1869,12 +2005,50 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                         modifier = Modifier.fillMaxSize()
                     ) {
                         items(response) { line ->
-                            Text(text = line, modifier = Modifier.fillMaxWidth())
+                            when {
+                                line.startsWith("=== ") -> {
+                                    Text(
+                                        text = line.removePrefix("=== ").removeSuffix(" ==="),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(top = 2.dp, bottom = 6.dp)
+                                    )
+                                }
+                                line.startsWith("SECTION: ") -> {
+                                    val sectionLabel = line.removePrefix("SECTION: ").trim()
+                                    Surface(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(top = 6.dp, bottom = 3.dp),
+                                        shape = MaterialTheme.shapes.medium,
+                                        color = MaterialTheme.colorScheme.surfaceContainerHigh
+                                    ) {
+                                        Text(
+                                            text = sectionLabel,
+                                            style = MaterialTheme.typography.labelLarge,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                        )
+                                    }
+                                }
+                                else -> {
+                                    Text(
+                                        text = line,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 1.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
         }
     }
+    }
+}
+}
 }
 

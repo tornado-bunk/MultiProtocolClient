@@ -11,8 +11,8 @@ android {
         applicationId = "it.tornado.multiprotocolclient"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.1"
+        versionCode = 2
+        versionName = "2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -51,7 +51,7 @@ android {
     buildFeatures {
         compose = true
     }
-    buildToolsVersion = "36.0.0-rc1"
+    buildToolsVersion = "36.1.0"
 }
 
 dependencies {
