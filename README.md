@@ -61,6 +61,10 @@
 - Wake-on-LAN (WoL) Magic Packet sender
 - WHOIS Domain Registrant Lookup (Port 43)
 
+### 📊 Monitoring & IoT
+- SNMP (Simple Network Management Protocol v2c)
+- MQTT (Message Queuing Telemetry Transport with SSL/TLS support)
+
 ### 📁 File Transfer
 - FTP (Active/Passive)
 - SFTP (Secure File Transfer)
