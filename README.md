@@ -68,6 +68,7 @@
 ### Performance Testing
 - iPerf3 client (TCP/UDP and reverse mode)
 - iPerf2 client (TCP/UDP)
+- Bundled binary loading by ABI (`assets/iperf/<abi>/`) with automatic extraction and execute permission
 
 ### 📁 File Transfer
 - FTP (Active/Passive)

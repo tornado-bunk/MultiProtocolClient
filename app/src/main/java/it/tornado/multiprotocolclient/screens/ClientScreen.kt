@@ -19,9 +19,12 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalClipboardManager
 
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import kotlinx.coroutines.launch
 import android.Manifest
@@ -40,6 +43,7 @@ fun ClientScreen(modifier: Modifier = Modifier) {
     val viewModel: ClientViewModel = viewModel()
     val response by viewModel.response.collectAsState()
     val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
     val focusManager = LocalFocusManager.current
     val coroutineScope = rememberCoroutineScope()
     val isInteractiveSessionActive by viewModel.isInteractiveSessionActive.collectAsState()
@@ -1835,13 +1839,39 @@ fun ClientScreen(modifier: Modifier = Modifier) {
                 .weight(1f) // Gives half/remaining space to output box on large screens
                 .heightIn(min = 200.dp) // Ensures it always has minimum height to scroll
         ) {
-            LazyColumn(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(8.dp)
             ) {
-                items(response) { line ->
-                    Text(text = line, modifier = Modifier.fillMaxWidth())
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(
+                        onClick = {
+                            val fullText = response.joinToString("\n")
+                            clipboardManager.setText(AnnotatedString(fullText))
+                            coroutineScope.launch {
+                                Toast.makeText(context, "Output copiato negli appunti", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        enabled = response.isNotEmpty()
+                    ) {
+                        Text("Copy output")
+                    }
+                }
+
+                SelectionContainer(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(response) { line ->
+                            Text(text = line, modifier = Modifier.fillMaxWidth())
+                        }
+                    }
                 }
             }
         }

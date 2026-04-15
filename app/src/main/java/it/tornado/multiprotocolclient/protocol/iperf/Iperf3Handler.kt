@@ -1,13 +1,17 @@
 package it.tornado.multiprotocolclient.protocol.iperf
 
+import android.content.Context
 import java.io.BufferedReader
+import java.io.IOException
 import java.io.InputStreamReader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 
-class Iperf3Handler {
+class Iperf3Handler(context: Context) {
+    private val resolver = IperfBinaryResolver(context.applicationContext)
+    private val bundledVersion = "3.21"
 
     fun runIperf3Client(
         host: String,
@@ -17,6 +21,7 @@ class Iperf3Handler {
         reverse: Boolean = false
     ): Flow<String> = flow {
         emit("iPerf3 client test")
+        emit("Bundled iPerf3 version: $bundledVersion")
         emit("Target: $host:$port")
         emit("Duration: ${durationSeconds}s")
         emit("Mode: ${if (useUdp) "UDP" else "TCP"}")
@@ -41,6 +46,13 @@ class Iperf3Handler {
             command.add("-R")
         }
 
+        val iperf3Binary = resolver.resolve("iperf3")
+        if (iperf3Binary == null) {
+            emit(resolver.diagnostics("iperf3"))
+            return@flow
+        }
+        command[0] = iperf3Binary
+
         try {
             val process = ProcessBuilder(command)
                 .redirectErrorStream(true)
@@ -60,9 +72,11 @@ class Iperf3Handler {
             } else {
                 emit("iPerf3 exited with code $exitCode")
             }
+        } catch (e: IOException) {
+            emit("Failed to run iPerf3: ${e.message}")
+            emit(resolver.diagnostics("iperf3"))
         } catch (e: Exception) {
             emit("Failed to run iPerf3: ${e.message}")
-            emit("Make sure the iPerf3 binary is available on the device.")
         }
     }.flowOn(Dispatchers.IO)
 }
