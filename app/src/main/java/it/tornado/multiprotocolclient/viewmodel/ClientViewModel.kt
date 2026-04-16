@@ -21,6 +21,7 @@ import it.tornado.multiprotocolclient.protocol.mail.Pop3Handler
 import it.tornado.multiprotocolclient.protocol.mail.ImapHandler
 import it.tornado.multiprotocolclient.protocol.ssh.InteractiveSshHandler
 import it.tornado.multiprotocolclient.protocol.telnet.InteractiveTelnetHandler
+import it.tornado.multiprotocolclient.protocol.terminal.RemoteTerminalSession
 import it.tornado.multiprotocolclient.protocol.wol.WolHandler
 import it.tornado.multiprotocolclient.protocol.whois.WhoisHandler
 import it.tornado.multiprotocolclient.protocol.discovery.DiscoveryHandler
@@ -85,6 +86,9 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
     val isInteractiveSessionActive = MutableStateFlow(false)
     private var interactiveTelnetHandler: InteractiveTelnetHandler? = null
     private var interactiveSshHandler: InteractiveSshHandler? = null
+
+    private val _terminalSession = MutableStateFlow<RemoteTerminalSession?>(null)
+    val terminalSession: StateFlow<RemoteTerminalSession?> = _terminalSession.asStateFlow()
 
     private fun appendLines(chunk: String) {
         val lines = chunk.split("\n").map { it.trimEnd('\r') }.filter { it.isNotEmpty() }
@@ -276,13 +280,25 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             beginProtocolOutput("Telnet", listOf("Host: ${host.trim()}", "Port: ${port.toIntOrNull() ?: 23}"))
             val p = port.toIntOrNull() ?: 23
-            interactiveTelnetHandler = InteractiveTelnetHandler()
-            isInteractiveSessionActive.value = true
-            interactiveTelnetHandler?.connect(host.trim(), p) { chunk ->
-                appendLines(chunk)
+            val handler = InteractiveTelnetHandler()
+            interactiveTelnetHandler = handler
+            val termSession = RemoteTerminalSession().also { session ->
+                session.remoteSink = { data, offset, length ->
+                    handler.writeBytes(data, offset, length)
+                }
             }
+            _terminalSession.value = termSession
+            isInteractiveSessionActive.value = true
+            handler.connect(
+                host = host.trim(),
+                port = p,
+                onBytes = { buffer, length -> termSession.feed(buffer, length) },
+                onStatus = { chunk -> appendLines(chunk) }
+            )
             isInteractiveSessionActive.value = false
             interactiveTelnetHandler = null
+            termSession.markFinished()
+            _terminalSession.value = null
             finishProtocolOutput()
         }
     }
@@ -294,13 +310,27 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
                 listOf("Host: ${host.trim()}", "Port: ${port.toIntOrNull() ?: 22}", "Username: $user")
             )
             val p = port.toIntOrNull() ?: 22
-            interactiveSshHandler = InteractiveSshHandler()
-            isInteractiveSessionActive.value = true
-            interactiveSshHandler?.connect(host.trim(), p, user, pass) { chunk ->
-                appendLines(chunk)
+            val handler = InteractiveSshHandler()
+            interactiveSshHandler = handler
+            val termSession = RemoteTerminalSession().also { session ->
+                session.remoteSink = { data, offset, length ->
+                    handler.writeBytes(data, offset, length)
+                }
             }
+            _terminalSession.value = termSession
+            isInteractiveSessionActive.value = true
+            handler.connect(
+                host = host.trim(),
+                port = p,
+                user = user,
+                pass = pass,
+                onBytes = { buffer, length -> termSession.feed(buffer, length) },
+                onStatus = { chunk -> appendLines(chunk) }
+            )
             isInteractiveSessionActive.value = false
             interactiveSshHandler = null
+            termSession.markFinished()
+            _terminalSession.value = null
             finishProtocolOutput()
         }
     }

@@ -64,7 +64,8 @@ fun ClientScreen(
     initialProtocol: String = allProtocols.first(),
     showProtocolPickerInline: Boolean = true,
     onChangeProtocolRequested: () -> Unit = {},
-    onOpenFullscreenConsole: (() -> Unit)? = null
+    onOpenFullscreenConsole: (() -> Unit)? = null,
+    onOpenTerminalConsole: (() -> Unit)? = null
 ) {
     val response by viewModel.response.collectAsState()
     val renderedResponse = remember(
@@ -1213,17 +1214,6 @@ fun ClientScreen(
                     )
                 }
             }
-            
-            if (isInteractiveSessionActive) {
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = customMessage,
-                    onValueChange = { customMessage = it },
-                    label = { Text("Command") },
-                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
         }
 
         // WoL fields
@@ -1718,6 +1708,7 @@ fun ClientScreen(
                     Spacer(modifier = Modifier.width(8.dp))
                 }
 
+                if (!(interactiveMode && isInteractiveSessionActive)) {
                 FilledTonalButton(
                     modifier = Modifier.heightIn(min = 56.dp),
                     shape = MaterialTheme.shapes.large,
@@ -2034,10 +2025,11 @@ fun ClientScreen(
                 }
             ) {
                 Text(text = if (interactiveMode) {
-                    if (isInteractiveSessionActive) "Send Cmd" else "Connect"
+                    "Connect"
                 } else {
                     "Send"
                 })
+            }
             }
             }
         }
@@ -2059,13 +2051,25 @@ fun ClientScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    FilledTonalButton(
-                        modifier = Modifier.heightIn(min = 44.dp),
-                        shape = MaterialTheme.shapes.large,
-                        onClick = { onOpenFullscreenConsole?.invoke() },
-                        enabled = onOpenFullscreenConsole != null
-                    ) {
-                        Text("Full screen")
+                    val useTerminalConsole = selectedProtocol == "SSH" || selectedProtocol == "Telnet"
+                    if (useTerminalConsole) {
+                        FilledTonalButton(
+                            modifier = Modifier.heightIn(min = 44.dp),
+                            shape = MaterialTheme.shapes.large,
+                            onClick = { onOpenTerminalConsole?.invoke() },
+                            enabled = onOpenTerminalConsole != null && isInteractiveSessionActive
+                        ) {
+                            Text("Console")
+                        }
+                    } else {
+                        FilledTonalButton(
+                            modifier = Modifier.heightIn(min = 44.dp),
+                            shape = MaterialTheme.shapes.large,
+                            onClick = { onOpenFullscreenConsole?.invoke() },
+                            enabled = onOpenFullscreenConsole != null
+                        ) {
+                            Text("Full screen")
+                        }
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     OutlinedButton(

@@ -25,6 +25,7 @@ kwik = "0.10.8"
 snmp4j = "3.9.7"
 pahoMqtt = "1.2.5"
 datastorePreferences = "1.2.1"
+termux = "0.118.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -56,6 +57,8 @@ kwik = { module = "tech.kwik:kwik", version.ref = "kwik" }
 snmp4j = { module = "org.snmp4j:snmp4j", version.ref = "snmp4j" }
 paho-mqtt = { module = "org.eclipse.paho:org.eclipse.paho.client.mqttv3", version.ref = "pahoMqtt" }
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastorePreferences" }
+termux-terminal-view = { module = "com.termux.termux-app:terminal-view", version.ref = "termux" }
+termux-terminal-emulator = { module = "com.termux.termux-app:terminal-emulator", version.ref = "termux" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

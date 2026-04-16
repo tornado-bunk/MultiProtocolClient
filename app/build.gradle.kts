@@ -39,6 +39,10 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = true
+            excludes += setOf(
+                "lib/*/libtermux.so",
+                "lib/*/liblocal-socket.so"
+            )
         }
     }
 
@@ -85,4 +89,6 @@ dependencies {
     implementation(libs.bcprov.jdk18on)
     implementation(libs.snmp4j)
     implementation(libs.paho.mqtt)
+    implementation(libs.termux.terminal.view)
+    implementation(libs.termux.terminal.emulator)
 }

@@ -2,38 +2,56 @@ package it.tornado.multiprotocolclient.protocol.telnet
 
 import org.apache.commons.net.telnet.TelnetClient
 import kotlinx.coroutines.*
-import java.io.InputStream
-import java.io.OutputStream
 
 class InteractiveTelnetHandler {
     private var client: TelnetClient? = null
     private var readerJob: Job? = null
+    private val handlerScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
+    /** Legacy string-based API used by the inline preview. */
     suspend fun connect(host: String, port: Int, onLog: (String) -> Unit) {
+        connect(
+            host = host,
+            port = port,
+            onBytes = { buf, len -> onLog(String(buf, 0, len)) },
+            onStatus = { onLog(it) }
+        )
+    }
+
+    /**
+     * Byte-oriented connect: [onBytes] receives raw data from the telnet socket (no
+     * reformatting) while [onStatus] receives human readable status messages.
+     */
+    suspend fun connect(
+        host: String,
+        port: Int,
+        onBytes: (ByteArray, Int) -> Unit,
+        onStatus: (String) -> Unit
+    ) {
         withContext(Dispatchers.IO) {
             try {
                 client = TelnetClient().apply {
                     connectTimeout = 5000
                     connect(host, port)
                 }
-                onLog("Connected to Telnet server at $host:$port")
+                onStatus("Connected to Telnet server at $host:$port")
                 val input = client?.inputStream ?: return@withContext
                 readerJob = launch(Dispatchers.IO) {
-                    val buffer = ByteArray(1024)
+                    val buffer = ByteArray(4096)
                     try {
                         while (isActive) {
                             val bytesRead = input.read(buffer)
                             if (bytesRead == -1) break
-                            onLog(String(buffer, 0, bytesRead))
+                            if (bytesRead > 0) onBytes(buffer, bytesRead)
                         }
                     } catch (e: Exception) {
-                        onLog("Error reading from server: ${e.message}")
+                        onStatus("Error reading from server: ${e.message}")
                     }
-                    onLog("Connection closed by server.")
+                    onStatus("Connection closed by server.")
                     disconnect()
                 }
             } catch (e: Exception) {
-                onLog("Telnet connection failed: ${e.message}")
+                onStatus("Telnet connection failed: ${e.message}")
                 disconnect()
             }
         }
@@ -54,11 +72,28 @@ class InteractiveTelnetHandler {
         }
     }
 
+    /** Write arbitrary bytes typed from a terminal view directly to the telnet socket. */
+    fun writeBytes(data: ByteArray, offset: Int = 0, length: Int = data.size): Boolean {
+        val out = client?.outputStream ?: return false
+        val copy = data.copyOfRange(offset, offset + length)
+        handlerScope.launch {
+            try {
+                out.write(copy)
+                out.flush()
+            } catch (_: Exception) {
+            }
+        }
+        return true
+    }
+
+    fun isConnected(): Boolean = client?.isConnected == true
+
     fun disconnect() {
+        handlerScope.coroutineContext.cancelChildren()
         readerJob?.cancel()
         try {
             client?.disconnect()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             // ignore
         }
         client = null

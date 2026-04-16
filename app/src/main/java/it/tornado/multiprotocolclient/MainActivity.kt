@@ -60,6 +60,7 @@ import androidx.compose.runtime.LaunchedEffect
 import it.tornado.multiprotocolclient.ui.theme.MultiProtocolClientTheme
 import it.tornado.multiprotocolclient.screens.ClientScreen
 import it.tornado.multiprotocolclient.screens.ConsoleFullScreenScreen
+import it.tornado.multiprotocolclient.screens.ConsoleTerminalScreen
 import it.tornado.multiprotocolclient.screens.ProtocolPickerScreen
 import it.tornado.multiprotocolclient.screens.SettingsScreen
 import it.tornado.multiprotocolclient.settings.ThemeMode
@@ -147,8 +148,12 @@ fun MainScreen(
 
     LaunchedEffect(currentRoute, uiSettings.clearOutputOnExit) {
         if (uiSettings.clearOutputOnExit) {
-            val wasRequestFlow = previousRoute.startsWith("request_builder") || previousRoute.startsWith("console_fullscreen")
-            val nowOutsideRequestFlow = !currentRoute.startsWith("request_builder") && !currentRoute.startsWith("console_fullscreen")
+            val wasRequestFlow = previousRoute.startsWith("request_builder") ||
+                previousRoute.startsWith("console_fullscreen") ||
+                previousRoute.startsWith("console_terminal")
+            val nowOutsideRequestFlow = !currentRoute.startsWith("request_builder") &&
+                !currentRoute.startsWith("console_fullscreen") &&
+                !currentRoute.startsWith("console_terminal")
             if (wasRequestFlow && nowOutsideRequestFlow) {
                 clientViewModel.resetResponse()
             }
@@ -205,6 +210,9 @@ fun MainScreen(
                         },
                         onOpenFullscreenConsole = {
                             navController.navigate("console_fullscreen")
+                        },
+                        onOpenTerminalConsole = {
+                            navController.navigate("console_terminal")
                         }
                     )
                 }
@@ -213,6 +221,12 @@ fun MainScreen(
                         uiSettings = uiSettings,
                         viewModel = clientViewModel,
                         onBackToRequest = { navController.popBackStack() }
+                    )
+                }
+                composable("console_terminal") {
+                    ConsoleTerminalScreen(
+                        viewModel = clientViewModel,
+                        onBack = { navController.popBackStack() }
                     )
                 }
                 composable("settings") {
