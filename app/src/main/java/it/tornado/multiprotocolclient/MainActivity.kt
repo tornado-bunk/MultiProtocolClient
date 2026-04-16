@@ -218,7 +218,7 @@ fun MainScreen(
                         .fillMaxWidth()
                         .align(Alignment.BottomCenter)
                         .navigationBarsPadding()
-                        .padding(horizontal = 22.dp, vertical = 14.dp),
+                        .padding(horizontal = 22.dp, vertical = 0.dp),
                     contentAlignment = Alignment.BottomCenter
                 ) {
                     Surface(

@@ -365,7 +365,7 @@ fun ClientScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .widthIn(max = maxContentWidth)
-                    .padding(start = horizontalPadding, top = 6.dp, end = horizontalPadding)
+                    .padding(start = horizontalPadding, top = 4.dp, end = horizontalPadding)
                     .fillMaxSize()
             ) {
                 if (!showProtocolPickerInline) {
@@ -376,7 +376,7 @@ fun ClientScreen(
                                 style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold)
                             )
                         },
-                        expandedHeight = 56.dp,
+                        expandedHeight = 20.dp,
                         colors = TopAppBarDefaults.topAppBarColors(
                             containerColor = Color.Transparent
                         ),
@@ -477,7 +477,7 @@ fun ClientScreen(
             Spacer(modifier = Modifier.height(16.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 OutlinedTextField(
                     value = ipAddress,
@@ -570,7 +570,7 @@ fun ClientScreen(
 
         // Show additional fields based on the selected protocol
         if (selectedProtocol == "DNS") {
-            Spacer(modifier = Modifier.height(if (showProtocolPickerInline) 16.dp else 8.dp))
+            Spacer(modifier = Modifier.height(if (showProtocolPickerInline) 8.dp else 4.dp))
 
             // Domain and query type
             Row(
@@ -1615,7 +1615,7 @@ fun ClientScreen(
         ) {
             OutlinedButton(
                 modifier = Modifier.heightIn(min = 52.dp),
-                shape = MaterialTheme.shapes.extraLarge,
+                shape = MaterialTheme.shapes.large,
                 onClick = {
                     if (uiSettings.confirmBeforeReset) {
                         showResetConfirmDialog = true
@@ -1650,10 +1650,10 @@ fun ClientScreen(
 
                 FilledTonalButton(
                     modifier = Modifier.heightIn(min = 56.dp),
-                    shape = MaterialTheme.shapes.extraLarge,
+                    shape = MaterialTheme.shapes.large,
                     colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     ),
                     onClick = {
                     if (
@@ -1987,7 +1987,7 @@ fun ClientScreen(
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.Center
                 ) {
                     FilledTonalButton(
                         modifier = Modifier.heightIn(min = 44.dp),

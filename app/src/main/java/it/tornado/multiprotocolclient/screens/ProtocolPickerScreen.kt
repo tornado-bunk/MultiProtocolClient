@@ -83,46 +83,46 @@ fun ProtocolPickerScreen(
                         .padding(start = horizontalPadding, top = 6.dp, end = horizontalPadding)
                         .fillMaxSize()
                 ) {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        contentPadding = PaddingValues(top = 2.dp, bottom = 112.dp)
+                    // Header fisso: quando scorre la lista, questo resta sempre visibile.
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        item {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Choose a protocol",
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                FilledIconButton(
-                                    onClick = { onOpenRequestBuilder(selectedProtocol) },
-                                    enabled = hasExplicitSelection
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                        contentDescription = "Continue to request builder"
-                                    )
-                                }
-                            }
-                            Text(
-                                text = "Pick a category first, then select a protocol to build your request.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 6.dp, bottom = 8.dp)
-                            )
-                            Text(
-                                text = "Selected: $selectedProtocol",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.primary
+                        Text(
+                            text = "Choose a protocol",
+                            style = MaterialTheme.typography.headlineSmall,
+                            modifier = Modifier.weight(1f)
+                        )
+                        FilledIconButton(
+                            onClick = { onOpenRequestBuilder(selectedProtocol) },
+                            enabled = hasExplicitSelection
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = "Continue to request builder"
                             )
                         }
+                    }
+                    Text(
+                        text = "Pick a category first, then select a protocol to build your request.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 6.dp, bottom = 8.dp)
+                    )
+                    Text(
+                        text = "Selected: $selectedProtocol",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
 
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        contentPadding = PaddingValues(top = 15.dp, bottom = 80.dp)
+                    ) {
                         items(protocolSections) { section ->
                             val singleProtocol = section.protocols.size == 1
                             Card(
