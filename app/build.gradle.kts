@@ -40,8 +40,8 @@ android {
         jniLibs {
             useLegacyPackaging = true
             excludes += setOf(
-                "lib/*/libtermux.so",
-                "lib/*/liblocal-socket.so"
+                "**/libtermux.so",
+                "**/liblocal-socket.so"
             )
         }
     }
