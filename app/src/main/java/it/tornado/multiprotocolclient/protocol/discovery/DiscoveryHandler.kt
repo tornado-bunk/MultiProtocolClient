@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.GlobalScope
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
@@ -109,7 +108,7 @@ class DiscoveryHandler(private val context: Context) {
                         }
                     })
                 } catch (e: Exception) {
-                    // Ignore resolution errors (e.g. resolve already in progress)
+                    // Ignore resolution errors
                 }
             }
             override fun onServiceLost(service: NsdServiceInfo) {}

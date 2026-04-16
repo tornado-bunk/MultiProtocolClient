@@ -46,7 +46,7 @@ class MdnsBonjourHandler(private val context: Context) {
                         }
                     })
                 } catch (_: Exception) {
-                    // Ignore transient NSD errors (for example resolve already in progress).
+                    // Ignore transient NSD errors
                 }
             }
 

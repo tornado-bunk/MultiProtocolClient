@@ -51,8 +51,9 @@ fun ProtocolPickerScreen(
     modifier: Modifier = Modifier,
     onOpenRequestBuilder: (String) -> Unit
 ) {
-    var selectedProtocol by rememberSaveable { mutableStateOf(allProtocols.first()) }
-    var hasExplicitSelection by rememberSaveable { mutableStateOf(false) }
+    val defaultProtocol = "HTTP"
+    var selectedProtocol by rememberSaveable { mutableStateOf(defaultProtocol) }
+    var hasExplicitSelection by rememberSaveable { mutableStateOf(true) }
     var expandedSection by rememberSaveable { mutableStateOf(protocolSections.first().title) }
     var showContent by rememberSaveable { mutableStateOf(false) }
 

@@ -45,9 +45,6 @@ object DnsConstants {
         )
     )
 
-    // Resolvers that support DNS over QUIC
-    val DOQ_RESOLVERS = RESOLVERS.filter { it.value.supportsDoq }
-
     // Fallback in case of lookup failure
     val FALLBACK_PROVIDER = DnsProvider("8.8.8.8", "dns.google", "https://dns.google/dns-query")
 }

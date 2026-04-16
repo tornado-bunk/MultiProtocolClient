@@ -125,7 +125,11 @@ fun MainScreen(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: "protocol_picker"
     val showFloatingBar = currentRoute == "protocol_picker" || currentRoute == "settings"
-    val bottomBarScrollBehavior = BottomAppBarDefaults.exitAlwaysScrollBehavior()
+    val bottomBarScrollBehavior = if (showFloatingBar) {
+        BottomAppBarDefaults.exitAlwaysScrollBehavior()
+    } else {
+        null
+    }
     var previousRoute by rememberSaveable { mutableStateOf(currentRoute) }
 
     // Request permissions at startup
@@ -155,7 +159,13 @@ fun MainScreen(
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
-            .nestedScroll(bottomBarScrollBehavior.nestedScrollConnection),
+            .let { baseModifier ->
+                if (bottomBarScrollBehavior != null) {
+                    baseModifier.nestedScroll(bottomBarScrollBehavior.nestedScrollConnection)
+                } else {
+                    baseModifier
+                }
+            },
         containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
     ) { innerPadding ->
         Box(

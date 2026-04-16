@@ -22,10 +22,10 @@ object CronetHelper {
 
     private var cronetEngine: CronetEngine? = null
     private val executor = Executors.newCachedThreadPool()
+    private const val STRICT_HTTP3 = true
 
     /**
      * Initialize the Cronet engine with QUIC/HTTP3 enabled.
-     * Must be called with an Android Context before making requests.
      */
     fun initialize(context: Context) {
         if (cronetEngine != null) return
@@ -34,13 +34,13 @@ object CronetHelper {
             CronetProviderInstaller.installProvider(context)
 
             cronetEngine = CronetEngine.Builder(context)
-                .enableHttp2(true)
+                .enableHttp2(!STRICT_HTTP3)
                 .enableQuic(true) // Enable QUIC for HTTP/3
                 .build()
         } catch (e: Exception) {
             // Fallback: try building without Play Services provider
             cronetEngine = CronetEngine.Builder(context)
-                .enableHttp2(true)
+                .enableHttp2(!STRICT_HTTP3)
                 .enableQuic(true)
                 .build()
         }
@@ -55,7 +55,7 @@ object CronetHelper {
      */
     suspend fun performDoH3Request(url: String, wireFormat: ByteArray): ByteArray {
         val engine = cronetEngine
-            ?: throw IllegalStateException("CronetEngine not initialized. Call CronetHelper.initialize(context) first.")
+            ?: throw IllegalStateException("CronetEngine not initialized.")
 
         return suspendCancellableCoroutine { continuation ->
             val responseBody = ByteArrayOutputStream()
@@ -72,11 +72,27 @@ object CronetHelper {
                     }
 
                     override fun onResponseStarted(request: UrlRequest, info: UrlResponseInfo) {
+                        val negotiatedProtocol = info.negotiatedProtocol.orEmpty().trim()
+                        if (STRICT_HTTP3 && !isHttp3Protocol(negotiatedProtocol)) {
+                            if (continuation.isActive) {
+                                continuation.resumeWithException(
+                                    Exception(
+                                        "DoH3 strict mode rejected fallback protocol: " +
+                                            if (negotiatedProtocol.isBlank()) "<unknown>" else negotiatedProtocol
+                                    )
+                                )
+                            }
+                            request.cancel()
+                            return
+                        }
+
                         val httpCode = info.httpStatusCode
                         if (httpCode != 200) {
-                            continuation.resumeWithException(
-                                Exception("DoH3 HTTP error: $httpCode")
-                            )
+                            if (continuation.isActive) {
+                                continuation.resumeWithException(
+                                    Exception("DoH3 HTTP error: $httpCode")
+                                )
+                            }
                             return
                         }
                         // Allocate buffer and start reading
@@ -97,7 +113,9 @@ object CronetHelper {
                     }
 
                     override fun onSucceeded(request: UrlRequest, info: UrlResponseInfo) {
-                        continuation.resume(responseBody.toByteArray())
+                        if (continuation.isActive) {
+                            continuation.resume(responseBody.toByteArray())
+                        }
                     }
 
                     override fun onFailed(
@@ -105,9 +123,11 @@ object CronetHelper {
                         info: UrlResponseInfo?,
                         error: CronetException
                     ) {
-                        continuation.resumeWithException(
-                            Exception("DoH3 request failed: ${error.message}", error)
-                        )
+                        if (continuation.isActive) {
+                            continuation.resumeWithException(
+                                Exception("DoH3 request failed: ${error.message}", error)
+                            )
+                        }
                     }
                 },
                 executor
@@ -126,10 +146,9 @@ object CronetHelper {
         }
     }
 
-    /**
-     * Get information about the protocol used in the last request.
-     */
-    fun getProtocolInfo(info: UrlResponseInfo?): String {
-        return info?.negotiatedProtocol ?: "unknown"
+    private fun isHttp3Protocol(protocol: String): Boolean {
+        // Cronet may expose h3 variants such as h3, h3-29, h3-Q050.
+        return protocol.startsWith("h3", ignoreCase = true)
     }
+
 }

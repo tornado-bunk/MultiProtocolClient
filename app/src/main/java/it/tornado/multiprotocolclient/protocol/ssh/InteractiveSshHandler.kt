@@ -8,9 +8,6 @@ import net.schmizz.sshj.userauth.method.PasswordResponseProvider
 import net.schmizz.sshj.userauth.password.PasswordFinder
 import net.schmizz.sshj.userauth.password.Resource
 import kotlinx.coroutines.*
-import java.io.InputStream
-import java.io.OutputStream
-
 import java.security.Security
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 

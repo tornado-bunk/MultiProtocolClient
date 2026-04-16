@@ -1,4 +1,3 @@
-// HttpHandler.kt
 package it.tornado.multiprotocolclient.protocol.http
 
 import android.annotation.SuppressLint
@@ -7,6 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import java.net.HttpURLConnection
+import java.net.URI
 import java.net.URL
 import java.security.cert.X509Certificate
 import javax.net.ssl.HostnameVerifier
@@ -16,12 +16,26 @@ import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 
 class HttpHandler {
+    private data class ParsedHttpTarget(
+        val host: String,
+        val pathWithQuery: String
+    )
+
     // Function to handle HTTP requests
     fun processHttpRequest(request: HttpRequest) = flow {
         if (request.protocol == "HTTP") {
+            val target = parseHttpTarget(request.ip)
+            if (target.host.isBlank()) {
+                emit(listOf("Error: Invalid host value"))
+                return@flow
+            }
+
             // Create URL string based on request parameters
-            val urlString = if (request.useSSL) "https://${request.ip}:${request.port}"
-            else "http://${request.ip}:${request.port}"
+            val urlString = if (request.useSSL) {
+                "https://${target.host}:${request.port}${target.pathWithQuery}"
+            } else {
+                "http://${target.host}:${request.port}${target.pathWithQuery}"
+            }
 
             try {
                 // Open connection to the URL
@@ -82,5 +96,47 @@ class HttpHandler {
             }
         }
     }.flowOn(Dispatchers.IO)
+
+    private fun parseHttpTarget(input: String): ParsedHttpTarget {
+        val raw = input.trim()
+        if (raw.isBlank()) return ParsedHttpTarget("", "/")
+
+        val candidate = if (raw.contains("://")) raw else "http://$raw"
+        return try {
+            val uri = URI(candidate)
+            val hostCandidate = when {
+                !uri.host.isNullOrBlank() -> uri.host
+                !uri.authority.isNullOrBlank() -> uri.authority
+                else -> raw
+            }
+            val sanitizedHost = sanitizeHost(hostCandidate)
+            val path = uri.rawPath.takeUnless { it.isNullOrBlank() } ?: "/"
+            val queryPart = uri.rawQuery?.let { "?$it" } ?: ""
+            ParsedHttpTarget(sanitizedHost, path + queryPart)
+        } catch (_: Exception) {
+            val noScheme = raw.substringAfter("://", raw)
+            val authority = noScheme
+                .substringBefore("/")
+                .substringBefore("?")
+                .substringBefore("#")
+            val pathAndQuery = noScheme.removePrefix(authority)
+                .substringBefore("#")
+                .let { if (it.isBlank()) "/" else it }
+            ParsedHttpTarget(sanitizeHost(authority), pathAndQuery)
+        }
+    }
+
+    private fun sanitizeHost(authorityOrHost: String): String {
+        return authorityOrHost
+            .substringAfterLast("@")
+            .substringBefore("/")
+            .substringBefore("?")
+            .substringBefore("#")
+            .removeSuffix(".")
+            .let { value ->
+                if (value.startsWith("[") && value.contains("]")) value else value.substringBefore(":")
+            }
+            .trim()
+    }
 
 }

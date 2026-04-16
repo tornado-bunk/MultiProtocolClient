@@ -16,7 +16,7 @@ import org.apache.commons.net.ftp.FTPReply
 
 class FtpHandler {
 
-    fun listFilesFtp(host: String, port: Int = 21, user: String = "anonymous", pass: String = ""): Flow<String> = flow {
+    fun listFilesFtp(host: String, port: Int = 21, user: String = "", pass: String = ""): Flow<String> = flow {
         val ftp = FTPClient()
         try {
             emit(" FTP Connection: $host:$port")

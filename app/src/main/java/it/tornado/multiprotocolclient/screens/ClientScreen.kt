@@ -152,6 +152,48 @@ fun ClientScreen(
         }
     }
 
+    fun extractHttpPortFromInput(input: String): Int? {
+        fun parsePortFromAuthority(authorityRaw: String): Int? {
+            val authority = authorityRaw.substringAfterLast("@").trim()
+            if (authority.isBlank()) return null
+
+            if (authority.startsWith("[")) {
+                val closeIdx = authority.indexOf(']')
+                if (closeIdx >= 0 && closeIdx + 1 < authority.length && authority[closeIdx + 1] == ':') {
+                    val portValue = authority.substring(closeIdx + 2).toIntOrNull()
+                    return if (portValue != null && portValue in 1..65535) portValue else null
+                }
+                return null
+            }
+
+            val colonIdx = authority.lastIndexOf(':')
+            if (colonIdx <= 0) return null
+            val portValue = authority.substring(colonIdx + 1).toIntOrNull()
+            return if (portValue != null && portValue in 1..65535) portValue else null
+        }
+
+        val raw = input.trim()
+        if (raw.isBlank()) return null
+
+        val candidate = if (raw.contains("://")) raw else "http://$raw"
+        val parsedUri = runCatching { java.net.URI(candidate) }.getOrNull()
+        if (parsedUri != null) {
+            if (parsedUri.port in 1..65535) {
+                return parsedUri.port
+            }
+            parsedUri.rawAuthority?.let { authority ->
+                parsePortFromAuthority(authority)?.let { return it }
+            }
+        }
+
+        val fallbackAuthority = raw
+            .substringAfter("://", raw)
+            .substringBefore("/")
+            .substringBefore("?")
+            .substringBefore("#")
+        return parsePortFromAuthority(fallbackAuthority)
+    }
+
     var useSSL by remember { mutableStateOf(true) }
     var useStartTls by remember { mutableStateOf(false) }
     var seeOnlyStatusCode by remember { mutableStateOf(false) }
@@ -481,7 +523,35 @@ fun ClientScreen(
             ) {
                 OutlinedTextField(
                     value = ipAddress,
-                    onValueChange = { ipAddress = it },
+                    onValueChange = { value ->
+                        ipAddress = value
+                        if (selectedProtocol == "HTTP") {
+                            val normalizedInput = value.trim()
+                            val lower = normalizedInput.lowercase()
+                            val extractedPort = extractHttpPortFromInput(normalizedInput)
+                            when {
+                                lower.startsWith("https://") -> {
+                                    useSSL = true
+                                    if (extractedPort != null) {
+                                        port = extractedPort.toString()
+                                    } else if (port == "80") {
+                                        port = "443"
+                                    }
+                                }
+                                lower.startsWith("http://") -> {
+                                    useSSL = false
+                                    if (extractedPort != null) {
+                                        port = extractedPort.toString()
+                                    } else if (port == "443") {
+                                        port = "80"
+                                    }
+                                }
+                                extractedPort != null -> {
+                                    port = extractedPort.toString()
+                                }
+                            }
+                        }
+                    },
                     label = { Text("Host") },
                     keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
                     modifier = Modifier.weight(1f)

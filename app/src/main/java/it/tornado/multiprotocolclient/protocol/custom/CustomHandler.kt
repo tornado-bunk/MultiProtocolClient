@@ -1,4 +1,3 @@
-// CustomHandler.kt
 package it.tornado.multiprotocolclient.protocol.custom
 
 import android.util.Log
