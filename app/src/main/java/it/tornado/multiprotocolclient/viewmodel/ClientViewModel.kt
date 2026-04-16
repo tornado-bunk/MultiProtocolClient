@@ -303,11 +303,11 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun connectSsh(host: String, port: String, user: String, pass: String) {
+    fun connectSsh(host: String, port: String, user: String, pass: String, privateKey: String? = null, publicKey: String? = null) {
         viewModelScope.launch {
             beginProtocolOutput(
                 "SSH",
-                listOf("Host: ${host.trim()}", "Port: ${port.toIntOrNull() ?: 22}", "Username: $user")
+                listOf("Host: ${host.trim()}", "Port: ${port.toIntOrNull() ?: 22}", "Username: $user", "Key Auth: ${privateKey != null}")
             )
             val p = port.toIntOrNull() ?: 22
             val handler = InteractiveSshHandler()
@@ -324,6 +324,8 @@ class ClientViewModel(application: Application) : AndroidViewModel(application) 
                 port = p,
                 user = user,
                 pass = pass,
+                privateKey = privateKey,
+                publicKey = publicKey,
                 onBytes = { buffer, length -> termSession.feed(buffer, length) },
                 onStatus = { chunk -> appendLines(chunk) }
             )

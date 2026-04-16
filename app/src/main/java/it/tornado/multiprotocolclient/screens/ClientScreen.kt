@@ -89,6 +89,12 @@ fun ClientScreen(
     val isInteractiveSessionActive by viewModel.isInteractiveSessionActive.collectAsState()
 
     // Permission launcher for Android 13+ (SDK 33)
+    var sshUsername by remember { mutableStateOf("") }
+    var sshPassword by remember { mutableStateOf("") }
+    var sshPrivateKey by remember { mutableStateOf<String?>(null) }
+    var sshPublicKey by remember { mutableStateOf<String?>(null) }
+    var useSshKeyAuth by remember { mutableStateOf(false) }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
@@ -103,6 +109,32 @@ fun ClientScreen(
                 coroutineScope.launch {
                     Toast.makeText(context, "Permission denied. Local connections may fail.", Toast.LENGTH_LONG).show()
                 }
+            }
+        }
+    }
+
+    val privateKeyLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let {
+            try {
+                context.contentResolver.openInputStream(it)?.use { stream ->
+                    sshPrivateKey = stream.reader().readText()
+                    Toast.makeText(context, "Private key loaded", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Failed to read private key", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    val publicKeyLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let {
+            try {
+                context.contentResolver.openInputStream(it)?.use { stream ->
+                    sshPublicKey = stream.reader().readText()
+                    Toast.makeText(context, "Public key loaded", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Failed to read public key", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -217,9 +249,6 @@ fun ClientScreen(
     var useTcp by remember { mutableStateOf(true) }
     var customMessage by remember { mutableStateOf("Hello from MultiProtocolClient") }
     var useSystemTimezone by remember { mutableStateOf(true) }
-    
-    var sshUsername by remember { mutableStateOf("") }
-    var sshPassword by remember { mutableStateOf("") }
 
     var wolMacAddress by remember { mutableStateOf("") }
     var wolBroadcast by remember { mutableStateOf("255.255.255.255") }
@@ -1206,15 +1235,81 @@ fun ClientScreen(
                     OutlinedTextField(
                         value = sshPassword,
                         onValueChange = { sshPassword = it },
-                        label = { Text("Password") },
+                        label = { Text(if (useSshKeyAuth) "Passphrase" else "Password") },
                         visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Password),
                         modifier = Modifier.weight(1f),
                         enabled = !isInteractiveSessionActive
                     )
                 }
+                
+                if (!isInteractiveSessionActive) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable { useSshKeyAuth = !useSshKeyAuth }
+                    ) {
+                        Checkbox(
+                            checked = useSshKeyAuth,
+                            onCheckedChange = { useSshKeyAuth = it }
+                        )
+                        Text(
+                            text = "Use Key Authentication",
+                            modifier = Modifier.padding(start = 4.dp)
+                        )
+                    }
+
+                    if (useSshKeyAuth) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = { privateKeyLauncher.launch("*/*") },
+                                shape = MaterialTheme.shapes.large,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(if (sshPrivateKey == null) "Load Private Key" else "Private Key Loaded")
+                            }
+                            OutlinedButton(
+                                onClick = { publicKeyLauncher.launch("*/*") },
+                                shape = MaterialTheme.shapes.large,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(if (sshPublicKey == null) "Load Public Key" else "Public Key Loaded")
+                            }
+                        }
+                        if (sshPrivateKey != null || sshPublicKey != null) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                TextButton(onClick = {
+                                    sshPrivateKey = null
+                                    sshPublicKey = null
+                                }) {
+                                    Text("Clear Keys")
+                                }
+                            }
+                        }
+                    }
+                }
             }
-        }
+            
+            if (selectedProtocol == "Telnet") {
+                if (isInteractiveSessionActive) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = customMessage,
+                        onValueChange = { customMessage = it },
+                        label = { Text("Command") },
+                        keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+         }
 
         // WoL fields
         if (selectedProtocol == "WoL") {
@@ -1625,7 +1720,11 @@ fun ClientScreen(
                     portScanTimeoutMs = defaultTimeoutMs.toString()
                 }
                 "Telnet" -> port = "23"
-                "SSH" -> port = "22"
+                "SSH" -> {
+                    port = "22"
+                    sshPrivateKey = null
+                    sshPublicKey = null
+                }
                 "WoL" -> {
                     wolMacAddress = ""
                     wolBroadcast = "255.255.255.255"
@@ -1996,7 +2095,7 @@ fun ClientScreen(
                                     viewModel.sendInteractiveCommand("SSH", customMessage)
                                     customMessage = ""
                                 } else {
-                                    viewModel.connectSsh(ipAddress, port, sshUsername, sshPassword)
+                                    viewModel.connectSsh(ipAddress, port, sshUsername, sshPassword, sshPrivateKey, sshPublicKey)
                                     coroutineScope.launch { Toast.makeText(context, "Connecting...", Toast.LENGTH_SHORT).show() }
                                 }
                             }
@@ -2025,7 +2124,7 @@ fun ClientScreen(
                 }
             ) {
                 Text(text = if (interactiveMode) {
-                    "Connect"
+                    if (selectedProtocol == "Telnet" && isInteractiveSessionActive) "Send Cmd" else "Connect"
                 } else {
                     "Send"
                 })
@@ -2051,7 +2150,7 @@ fun ClientScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    val useTerminalConsole = selectedProtocol == "SSH" || selectedProtocol == "Telnet"
+                    val useTerminalConsole = selectedProtocol == "SSH"
                     if (useTerminalConsole) {
                         FilledTonalButton(
                             modifier = Modifier.heightIn(min = 44.dp),

@@ -79,7 +79,6 @@ fun ConsoleTerminalScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .statusBarsPadding()
     ) {
         Box(
             modifier = Modifier

@@ -22,12 +22,14 @@ class InteractiveSshHandler {
      * Legacy string-based API used by the inline preview. Keeps backwards compatibility
      * for callers that only want a textual transcript.
      */
-    suspend fun connect(host: String, port: Int, user: String, pass: String, onLog: (String) -> Unit) {
+    suspend fun connect(host: String, port: Int, user: String, pass: String, privateKey: String? = null, publicKey: String? = null, onLog: (String) -> Unit) {
         connect(
             host = host,
             port = port,
             user = user,
             pass = pass,
+            privateKey = privateKey,
+            publicKey = publicKey,
             onBytes = { buf, len -> onLog(String(buf, 0, len)) },
             onStatus = { onLog(it) }
         )
@@ -43,6 +45,8 @@ class InteractiveSshHandler {
         port: Int,
         user: String,
         pass: String,
+        privateKey: String? = null,
+        publicKey: String? = null,
         onBytes: (ByteArray, Int) -> Unit,
         onStatus: (String) -> Unit
     ) {
@@ -55,18 +59,35 @@ class InteractiveSshHandler {
                     addHostKeyVerifier(PromiscuousVerifier())
                     connect(host, port)
 
-                    try {
-                        authPassword(user, pass)
-                    } catch (e: Exception) {
+                    if (!privateKey.isNullOrBlank()) {
                         try {
-                            val finder = object : PasswordFinder {
-                                override fun reqPassword(resource: Resource<*>?): CharArray = pass.toCharArray()
-                                override fun shouldRetry(resource: Resource<*>?): Boolean = false
+                            val passFinder = if (pass.isNotEmpty()) {
+                                object : PasswordFinder {
+                                    override fun reqPassword(resource: Resource<*>?): CharArray = pass.toCharArray()
+                                    override fun shouldRetry(resource: Resource<*>?): Boolean = false
+                                }
+                            } else null
+                            
+                            // SSHJ expects the actual string content of the private key
+                            val keyProvider = loadKeys(privateKey, publicKey, passFinder)
+                            authPublickey(user, keyProvider)
+                        } catch (e: Exception) {
+                            throw Exception("Key authentication failed: ${e.message}", e)
+                        }
+                    } else {
+                        try {
+                            authPassword(user, pass)
+                        } catch (e: Exception) {
+                            try {
+                                val finder = object : PasswordFinder {
+                                    override fun reqPassword(resource: Resource<*>?): CharArray = pass.toCharArray()
+                                    override fun shouldRetry(resource: Resource<*>?): Boolean = false
+                                }
+                                auth(user, AuthKeyboardInteractive(PasswordResponseProvider(finder)))
+                            } catch (e2: Exception) {
+                                // If both fail, let it bubble up
+                                throw Exception("Authentication failed (tried password and keyboard-interactive).", e2)
                             }
-                            auth(user, AuthKeyboardInteractive(PasswordResponseProvider(finder)))
-                        } catch (e2: Exception) {
-                            // If both fail, let it bubble up
-                            throw Exception("Authentication failed (tried password and keyboard-interactive).", e2)
                         }
                     }
                 }
