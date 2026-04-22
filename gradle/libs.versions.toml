@@ -1,5 +1,5 @@
 [versions]
-agp = "9.1.1"
+agp = "9.2.0"
 androidxMaterial3 = "1.5.0-alpha17"
 bcprovJdk18on = "1.84"
 dnsjavaDnsjava = "3.6.4"
