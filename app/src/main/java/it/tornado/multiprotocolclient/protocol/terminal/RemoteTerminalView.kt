@@ -99,15 +99,6 @@ class RemoteTerminalView @JvmOverloads constructor(
         invalidate()
     }
 
-    fun setTextSizeSp(sp: Float) {
-        if (sp == textSizeSp) return
-        textSizeSp = sp
-        renderer = buildRenderer(sp)
-        topRow = 0
-        updateSize()
-        invalidate()
-    }
-
     private fun buildRenderer(sp: Float): TerminalRenderer {
         val px = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_SP,

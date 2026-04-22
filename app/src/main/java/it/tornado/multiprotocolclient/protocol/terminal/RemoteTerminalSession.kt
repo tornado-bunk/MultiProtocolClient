@@ -7,7 +7,7 @@ import com.termux.terminal.TerminalSessionClient
 
 /**
  * A lightweight, process-less terminal session that wraps a [TerminalEmulator] and
- * bridges input/output between the emulator and a remote byte stream (SSH/Telnet).
+ * bridges input/output between the emulator and a remote byte stream.
  *
  * Termux's [TerminalSession] spawns a local subprocess via JNI, which is not what we
  * want here: our bytes come from a network protocol. This class mimics what we need
@@ -22,7 +22,7 @@ class RemoteTerminalSession {
         fun onBell()
     }
 
-    /** Sink for bytes typed by the user: forwarded to the remote side (SSH/Telnet). */
+    /** Sink for bytes typed by the user: forwarded to the remote side. */
     @Volatile
     var remoteSink: ((ByteArray, Int, Int) -> Unit)? = null
 
@@ -85,8 +85,6 @@ class RemoteTerminalSession {
 
     @Volatile
     private var finished: Boolean = false
-
-    fun isFinished(): Boolean = finished
 
     /** Lazily builds the emulator on the first size update from the view. */
     @Synchronized

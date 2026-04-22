@@ -24,11 +24,4 @@ class UiSettingsViewModel(application: Application) : AndroidViewModel(applicati
     fun updateConsoleShowTimestamps(value: Boolean) = viewModelScope.launch { store.updateConsoleShowTimestamps(value) }
     fun updateConsoleFontSize(value: ConsoleFontSize) = viewModelScope.launch { store.updateConsoleFontSize(value) }
     fun updateConsoleBufferLimit(value: Int) = viewModelScope.launch { store.updateConsoleBufferLimit(value) }
-    fun updateConfirmBeforeReset(value: Boolean) = viewModelScope.launch { store.updateConfirmBeforeReset(value) }
-    fun updateKeepLastFieldsPerProtocol(value: Boolean) = viewModelScope.launch { store.updateKeepLastFieldsPerProtocol(value) }
-    fun updateDefaultTimeoutSeconds(value: Int) = viewModelScope.launch { store.updateDefaultTimeoutSeconds(value) }
-    fun updateShowLocalNetworkWarnings(value: Boolean) = viewModelScope.launch { store.updateShowLocalNetworkWarnings(value) }
-    fun updateMaskSensitiveOutput(value: Boolean) = viewModelScope.launch { store.updateMaskSensitiveOutput(value) }
-    fun updateClearOutputOnExit(value: Boolean) = viewModelScope.launch { store.updateClearOutputOnExit(value) }
-    fun resetAll() = viewModelScope.launch { store.resetAll() }
 }

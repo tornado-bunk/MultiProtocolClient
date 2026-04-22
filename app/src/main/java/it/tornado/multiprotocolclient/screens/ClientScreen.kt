@@ -20,7 +20,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -544,7 +543,7 @@ fun ClientScreen(
                 }
             }
 
-            // Show additional fields based on the selected protocol
+        // Show additional fields based on the selected protocol
         if (selectedProtocol == "HTTP" || selectedProtocol == "SMTP" || selectedProtocol == "POP3" || selectedProtocol == "IMAP") {
             Spacer(modifier = Modifier.height(16.dp))
             Row(
@@ -643,7 +642,7 @@ fun ClientScreen(
                                     useSSL = false
                                     port = "587"
                                 } else {
-                                     // If turning off STARTTLS, go back to 25?
+                                     // If turning off STARTTLS, go back to 25
                                      if (!useSSL) port = "25"
                                 }
                             }
@@ -1188,8 +1187,6 @@ fun ClientScreen(
                 )
             }
         }
-
-
 
         // Show additional fields based on the selected protocol
         if (selectedProtocol == "Telnet" || selectedProtocol == "SSH") {

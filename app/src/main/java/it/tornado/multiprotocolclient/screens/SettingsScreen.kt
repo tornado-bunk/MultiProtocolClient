@@ -19,9 +19,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BugReport
-import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -41,11 +40,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.core.content.pm.PackageInfoCompat
 import it.tornado.multiprotocolclient.R
 import it.tornado.multiprotocolclient.settings.ConsoleFontSize
 import it.tornado.multiprotocolclient.settings.ThemeMode
@@ -62,7 +61,7 @@ fun SettingsScreen(
     val appVersion = remember {
         runCatching {
             val info = context.packageManager.getPackageInfo(context.packageName, 0)
-            "${info.versionName} (${PackageInfoCompat.getLongVersionCode(info)})"
+            "${info.versionName}"
         }.getOrElse { "Unknown" }
     }
     var bufferLimitText by remember(settings.consoleBufferLimit) { mutableStateOf(settings.consoleBufferLimit.toString()) }
@@ -107,13 +106,23 @@ fun SettingsScreen(
                 }
 
                 item {
-                    SettingsSectionCard(title = "Theme & Appearance") {
-                        EnumFilterRow(
-                            values = ThemeMode.entries,
-                            current = settings.themeMode,
-                            label = { it.name.lowercase().replaceFirstChar(Char::uppercase) },
-                            onSelect = settingsViewModel::updateThemeMode
-                        )
+                    SettingsSectionCard(title = "Look & Feel") {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Theme",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            EnumFilterRow(
+                                values = ThemeMode.entries,
+                                current = settings.themeMode,
+                                label = { it.name.lowercase().replaceFirstChar(Char::uppercase) },
+                                onSelect = settingsViewModel::updateThemeMode
+                            )
+                        }
                         SettingSwitchRow(
                             title = "Dynamic Color",
                             subtitle = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
@@ -123,18 +132,28 @@ fun SettingsScreen(
                             enabled = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
                             onCheckedChange = settingsViewModel::updateDynamicColor
                         )
-                        EnumFilterRow(
-                            values = UiTextSize.entries,
-                            current = settings.uiTextSize,
-                            label = {
-                                when (it) {
-                                    UiTextSize.SMALL -> "S"
-                                    UiTextSize.MEDIUM -> "M"
-                                    UiTextSize.LARGE -> "L"
-                                }
-                            },
-                            onSelect = settingsViewModel::updateUiTextSize
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "UI Text Size",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            EnumFilterRow(
+                                values = UiTextSize.entries,
+                                current = settings.uiTextSize,
+                                label = {
+                                    when (it) {
+                                        UiTextSize.SMALL -> "S"
+                                        UiTextSize.MEDIUM -> "M"
+                                        UiTextSize.LARGE -> "L"
+                                    }
+                                },
+                                onSelect = settingsViewModel::updateUiTextSize
+                            )
+                        }
                     }
                 }
 
@@ -150,18 +169,28 @@ fun SettingsScreen(
                             checked = settings.consoleShowTimestamps,
                             onCheckedChange = settingsViewModel::updateConsoleShowTimestamps
                         )
-                        EnumFilterRow(
-                            values = ConsoleFontSize.entries,
-                            current = settings.consoleFontSize,
-                            label = {
-                                when (it) {
-                                    ConsoleFontSize.SMALL -> "Small"
-                                    ConsoleFontSize.MEDIUM -> "Medium"
-                                    ConsoleFontSize.LARGE -> "Large"
-                                }
-                            },
-                            onSelect = settingsViewModel::updateConsoleFontSize
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Text Size",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            EnumFilterRow(
+                                values = ConsoleFontSize.entries,
+                                current = settings.consoleFontSize,
+                                label = {
+                                    when (it) {
+                                        ConsoleFontSize.SMALL -> "S"
+                                        ConsoleFontSize.MEDIUM -> "M"
+                                        ConsoleFontSize.LARGE -> "L"
+                                    }
+                                },
+                                onSelect = settingsViewModel::updateConsoleFontSize
+                            )
+                        }
                         OutlinedTextField(
                             value = bufferLimitText,
                             onValueChange = {
@@ -189,21 +218,11 @@ fun SettingsScreen(
                             Image(
                                 painter = painterResource(id = R.drawable.ic_mpc),
                                 contentDescription = null,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(20.dp).clip(CircleShape)
                             )
                             Text("MultiProtocolClient $appVersion")
                         }
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                        AboutLinkButton(
-                            label = "Changelog",
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Filled.Description,
-                                    contentDescription = null
-                                )
-                            },
-                            onClick = { openLink("https://github.com/tornado-bunk/MultiProtocolClient/releases") }
-                        )
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                         AboutLinkButton(
                             label = "GitHub",
                             leadingIcon = {
@@ -214,16 +233,6 @@ fun SettingsScreen(
                                 )
                             },
                             onClick = { openLink("https://github.com/tornado-bunk/MultiProtocolClient") }
-                        )
-                        AboutLinkButton(
-                            label = "Report an issue",
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Filled.BugReport,
-                                    contentDescription = null
-                                )
-                            },
-                            onClick = { openLink("https://github.com/tornado-bunk/MultiProtocolClient/issues/new") }
                         )
                     }
                 }
@@ -287,10 +296,11 @@ private fun <T> EnumFilterRow(
     values: List<T>,
     current: T,
     label: (T) -> String,
-    onSelect: (T) -> Unit
+    onSelect: (T) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         values.forEach { value ->

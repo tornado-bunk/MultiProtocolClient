@@ -84,7 +84,6 @@ fun ProtocolPickerScreen(
                         .padding(start = horizontalPadding, top = 6.dp, end = horizontalPadding)
                         .fillMaxSize()
                 ) {
-                    // Header fisso: quando scorre la lista, questo resta sempre visibile.
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,

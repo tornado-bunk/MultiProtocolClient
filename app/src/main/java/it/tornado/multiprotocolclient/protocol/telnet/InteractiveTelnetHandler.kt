@@ -86,8 +86,6 @@ class InteractiveTelnetHandler {
         return true
     }
 
-    fun isConnected(): Boolean = client?.isConnected == true
-
     fun disconnect() {
         handlerScope.coroutineContext.cancelChildren()
         readerJob?.cancel()

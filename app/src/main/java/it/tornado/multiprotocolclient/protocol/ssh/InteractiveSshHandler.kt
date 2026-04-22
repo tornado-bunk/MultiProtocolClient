@@ -147,8 +147,6 @@ class InteractiveSshHandler {
         return true
     }
 
-    fun isConnected(): Boolean = shell != null
-
     fun disconnect() {
         handlerScope.coroutineContext.cancelChildren()
         readerJob?.cancel()

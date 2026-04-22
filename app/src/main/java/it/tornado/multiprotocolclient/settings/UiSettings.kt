@@ -18,11 +18,6 @@ enum class ConsoleFontSize {
     LARGE
 }
 
-enum class LogExportFormat {
-    TXT,
-    JSON
-}
-
 data class UiSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = false,
