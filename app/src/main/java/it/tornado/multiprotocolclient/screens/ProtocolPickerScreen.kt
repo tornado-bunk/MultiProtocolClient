@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -96,20 +97,16 @@ fun ProtocolPickerScreen(
                         )
                         FilledIconButton(
                             onClick = { onOpenRequestBuilder(selectedProtocol) },
-                            enabled = hasExplicitSelection
-                        ) {
+                            enabled = hasExplicitSelection,
+                            modifier = Modifier.size(50.dp),
+                            ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                modifier = Modifier.size(30.dp),
                                 contentDescription = "Continue to request builder"
                             )
                         }
                     }
-                    Text(
-                        text = "Pick a category first, then select a protocol to build your request.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 6.dp, bottom = 8.dp)
-                    )
                     Text(
                         text = "Selected: $selectedProtocol",
                         style = MaterialTheme.typography.labelLarge,
